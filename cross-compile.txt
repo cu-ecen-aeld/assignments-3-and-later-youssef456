@@ -1,0 +1,5 @@
+# To obtain the version of the aarch64-none-linux-gnu-gcc toolchain:
+aarch64-none-linux-gnu-gcc -v 2> cross-compile.txt
+
+# To obtain the configuration and sysroot path using -print-sysroot:
+aarch64-none-linux-gnu-gcc -print-sysroot 2>> cross-compile.txt
