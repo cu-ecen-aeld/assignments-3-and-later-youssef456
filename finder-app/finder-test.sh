@@ -49,7 +49,6 @@ fi
 # Compile the writer application
 ##make
  
- 
 for i in $( seq 1 $NUMFILES)
 do
 	# Use your compiled "writer" application
