@@ -47,7 +47,7 @@ then
 fi
 
 # Compile the writer application
-make
+##make
 
 for i in $( seq 1 $NUMFILES)
 do
