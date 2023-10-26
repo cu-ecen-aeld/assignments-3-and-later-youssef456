@@ -21,4 +21,3 @@ match_count=$(grep -r "$search_string" "$path" | wc -l)
 file_count=$(find "$path" -type f | wc -l)
 
 echo "The number of files are $file_count and the number of matching lines are $match_count"
-
