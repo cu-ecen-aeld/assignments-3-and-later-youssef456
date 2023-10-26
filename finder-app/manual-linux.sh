@@ -11,7 +11,8 @@ KERNEL_VERSION=v5.1.10
 BUSYBOX_VERSION=1_33_1
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
-CROSS_COMPILER_PATH="$(readlink -f /home/youssef/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/)"
+#="$(readlink -f /home/youssef/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/)"
+CROSS_COMPILER_PATH=/home/youssef/gcc-arm-10.2-2020.11-x86_64-aarch64-none-linux-gnu/bin/
 CROSS_COMPILE="${CROSS_COMPILER_PATH}aarch64-none-linux-gnu-"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
