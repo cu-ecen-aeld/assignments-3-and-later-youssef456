@@ -37,8 +37,11 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     git checkout ${KERNEL_VERSION}
 
     # TODO: Add your kernel build steps here
-    make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" defconfig
-    make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" -j4   
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
 
 fi
 
