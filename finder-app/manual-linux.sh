@@ -36,7 +36,12 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     cd linux-stable
     echo "Checking out version ${KERNEL_VERSION}"
     git checkout ${KERNEL_VERSION}
-
+    echo "Current working directory: $(pwd)"
+    if [ -d "$CROSS_COMPILER_PATH" ]; then
+        echo "The directory '$directory_to_check' exists."
+    else
+        echo "The directory '$directory_to_check' does not exist."
+fi
     # TODO: Add your kernel build steps here
     sudo make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" defconfig
     sudo make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" -j4  
