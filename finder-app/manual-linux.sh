@@ -46,6 +46,7 @@ fi
     make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- modules
     #build device tree
     make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- dtbs
+    
 fi
 
 cd ${OUTDIR}/linux-stable
@@ -58,7 +59,7 @@ echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
 if [ -d "${OUTDIR}/rootfs" ]
 then
-	echo "Deleting rootfs directory at ${OUTDIR}/rootfs and starting over"
+    echo "Deleting rootfs directory at ${OUTDIR}/rootfs and starting over"
     sudo rm  -rf ${OUTDIR}/rootfs
 fi
 
