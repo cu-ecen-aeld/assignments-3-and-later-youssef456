@@ -35,12 +35,6 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     cd linux-stable
     echo "Checking out version ${KERNEL_VERSION}"
     git checkout ${KERNEL_VERSION}
-    
-    echo "Current working directory: $(pwd)"
-    if [ -d CROSS_COMPILER_PATH ]; then
-        echo "The directory '$CROSS_COMPILER_PATH' exists."
-    else
-        echo "The directory '$CROSS_COMPILER_PATH' does not exist."
 fi
     # TODO: Add your kernel build steps here
     ##sudo make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" defconfig
@@ -58,7 +52,7 @@ cd ${OUTDIR}/linux-stable
     
 echo "Adding the Image in outdir"
 # Install the kernel image to "OUTDIR."
-cp arch/arm64/boot/Image ${OUTDIR}
+sudo cp arch/arm64/boot/Image ${OUTDIR}
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -77,7 +71,7 @@ then
     git clone git://busybox.net/busybox.git ${OUTDIR}/busybox
     cd busybox
     git checkout ${BUSYBOX_VERSION}
-    # TODO:  Configure busybox
+    # TODO:  Configure busybox   
     make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu- defconfig
 else
     cd busybox
