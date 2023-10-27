@@ -38,8 +38,8 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     git checkout ${KERNEL_VERSION}
 
     # TODO: Add your kernel build steps here
-    make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" defconfig
-    make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" -j4  
+    sudo make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" defconfig
+    sudo make ARCH=arm64 CROSS_COMPILE="${CROSS_COMPILE}" -j4  
 fi
 
 cd ${OUTDIR}/linux-stable
