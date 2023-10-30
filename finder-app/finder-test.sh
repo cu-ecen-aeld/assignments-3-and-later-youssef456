@@ -32,10 +32,7 @@ echo "Writing ${NUMFILES} files containing string '${WRITESTR}' to '${WRITEDIR}'
 rm -rf "${WRITEDIR}"
 
 # create $WRITEDIR if not assignment1
-##assignment=$(cat conf/assignment.txt)
-
-##assignment4-part2 edit
-assignment=$(cat tmp/assignment4-result.txt)
+assignment=$(cat conf/assignment.txt)
 
 if [ "$assignment" != 'assignment1' ]
 then
@@ -76,9 +73,11 @@ rm -rf /tmp/aeld-data
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
 if [ $? -eq 0 ]; then
+        echo ${OUTPUTSTRING} >/tmp/assignment4-result.txt
 	echo "Success"
 	exit 0
 else
+        echo ${OUTPUTSTRING} >/tmp/assignment4-result.txt
 	echo "Failed: Expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
 	exit 1
 fi
