@@ -68,7 +68,7 @@ echo "files in directory is: $files"
 
 #. ./finder.sh "$WRITEDIR" "$WRITESTR"
 #OUTPUTSTRING=$(. ./finder.sh "$WRITEDIR" "$WRITESTR")
-OUTPUTSTRING=$(. ./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
 echo "Output from finder program: $OUTPUTSTRING"
 
 # Remove temporary directories
