@@ -66,7 +66,7 @@ echo "files in directory is: $files"
 chmod +x "finder.sh"
 
 #OUTPUTSTRING=$(. "./finder.sh" "$WRITEDIR" "$WRITESTR")
-OUTPUTSTRING=$(sudo ./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
 echo "Output from finder program: $OUTPUTSTRING"
 
 # Remove temporary directories
