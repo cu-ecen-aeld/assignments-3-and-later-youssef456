@@ -53,17 +53,19 @@ fi
 for i in $( seq 1 $NUMFILES)
 do
 	# Use your compiled "writer" application
-        WRITEDIR=${WRITEDIR#/}
-	#./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
-
+        ##WRITEDIR=${WRITEDIR#/}
+	##./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
-echo "args to writer $WRITEDIR/${username}$i.txt" "$WRITESTR"
 
+echo "args to writer $WRITEDIR/${username}$i.txt" "$WRITESTR"
 current_directory=$(pwd)
 echo "Current working directory is: $current_directory"
+
 files=$(ls)
 echo "files in directory is: $files"
 chmod +x ./finder.sh
+
 #. ./finder.sh "$WRITEDIR" "$WRITESTR"
 OUTPUTSTRING=$(. ./finder.sh "$WRITEDIR" "$WRITESTR")
 echo "Output from finder program: $OUTPUTSTRING"
