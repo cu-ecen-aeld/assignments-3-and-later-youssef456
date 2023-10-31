@@ -37,6 +37,21 @@ rm -rf "${WRITEDIR}"
 assignment=`cat /etc/finder-app/conf/assignment.txt`
 if [ "$assignment" != 'assignment1' ]
 then
+	mkdir -p "$WRITEDIR"
+
+	if [ -d "$WRITEDIR" ]
+	then
+		echo "$WRITEDIR created"
+	else
+		exit 1
+	fi
+fi
+
+# Compile the writer application
+##make
+ 
+for i in $( seq 1 $NUMFILES)
+do
         ##WRITEDIR=${WRITEDIR#/}
 	##./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
