@@ -36,29 +36,12 @@ rm -rf "${WRITEDIR}"
 #assignment=$(cat etc/finder-app/conf/assignment.txt)
 assignment=`cat /etc/finder-app/conf/assignment.txt`
 if [ "$assignment" != 'assignment1' ]
-then
-	mkdir -p "$WRITEDIR"
 
-	if [ -d "$WRITEDIR" ]
-	then
-		echo "$WRITEDIR created"
-	else
-		exit 1
-	fi
-fi
-
-# Compile the writer application
-##make
- 
-for i in $( seq 1 $NUMFILES)
-do
-	# Use your compiled "writer" application
         ##WRITEDIR=${WRITEDIR#/}
 	##./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
 
-echo "args to writer $WRITEDIR/${username}$i.txt" "$WRITESTR"
 current_directory=$(pwd)
 echo "Current working directory is: $current_directory"
 
@@ -69,7 +52,7 @@ chmod +x "finder.sh"
 
 #. ./finder.sh "$WRITEDIR" "$WRITESTR"
 #OUTPUTSTRING=$(. "./finder.sh" "$WRITEDIR" "$WRITESTR")
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$("finder.sh" "$WRITEDIR" "$WRITESTR")
 echo "Output from finder program: $OUTPUTSTRING"
 
 # Remove temporary directories
