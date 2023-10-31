@@ -36,7 +36,7 @@ rm -rf "${WRITEDIR}"
 #assignment=$(cat etc/finder-app/conf/assignment.txt)
 assignment=`cat /etc/finder-app/conf/assignment.txt`
 if [ "$assignment" != 'assignment1' ]
-
+then
         ##WRITEDIR=${WRITEDIR#/}
 	##./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
