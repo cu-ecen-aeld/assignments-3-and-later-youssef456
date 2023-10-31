@@ -64,11 +64,11 @@ echo "Current working directory is: $current_directory"
 
 files=$(ls)
 echo "files in directory is: $files"
-#chmod +x ./finder.sh
+chmod +x ./finder.sh
 
 #. ./finder.sh "$WRITEDIR" "$WRITESTR"
-#OUTPUTSTRING=$(. ./finder.sh "$WRITEDIR" "$WRITESTR")
-OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(. ./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(/etc/finder-app/finder.sh "$WRITEDIR" "$WRITESTR")
 echo "Output from finder program: $OUTPUTSTRING"
 
 # Remove temporary directories
