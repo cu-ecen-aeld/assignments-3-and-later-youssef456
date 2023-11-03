@@ -12,11 +12,13 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <sys/file.h>
+#include <sys/file.h>
+#include <sys/file.h>
 
 #define PORT 9000
 #define MAX_PACKET_SIZE 4096
 #define DATA_FILE "/var/tmp/aesdsocketdata"
-#define PID_FILE "/var/run/aesdsocket.pid"  // Path to the PID file
+#define PID_FILE "/var/run/aesdsocket.pid"
 
 int listen_socket, data_fd;
 
@@ -78,7 +80,6 @@ void handle_connection(int client_socket) {
 }
 
 void write_pid_file() {
-    // Open the PID file for writing and obtain an exclusive lock
     int pid_fd = open(PID_FILE, O_CREAT | O_RDWR, 0644);
     if (pid_fd == -1) {
         syslog(LOG_ERR, "Failed to open the PID file: %s", strerror(errno));
@@ -90,7 +91,6 @@ void write_pid_file() {
         exit(EXIT_FAILURE);
     }
 
-    // Write the current process ID to the PID file
     char pid_str[16];
     snprintf(pid_str, sizeof(pid_str), "%d\n", getpid());
     if (write(pid_fd, pid_str, strlen(pid_str)) == -1) {
@@ -101,7 +101,6 @@ void write_pid_file() {
 
 int main(int argc, char *argv[]) {
     if (argc > 1 && strcmp(argv[1], "-d") == 0) {
-        // Check if the daemon is already running
         int pid_fd = open(PID_FILE, O_RDONLY);
         if (pid_fd != -1) {
             char pid_str[16];
@@ -117,31 +116,24 @@ int main(int argc, char *argv[]) {
             close(pid_fd);
         }
 
-        // Fork a new process
         pid_t pid = fork();
         if (pid < 0) {
             perror("Fork failed");
             return EXIT_FAILURE;
         } else if (pid > 0) {
-            // Parent process exits
             return EXIT_SUCCESS;
         }
 
-        // Child process becomes the session leader
         setsid();
         umask(0);
         chdir("/");
-
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
         close(STDERR_FILENO);
-
-        // Write the PID to the PID file
         write_pid_file();
     }
 
     openlog("aesdsocket", LOG_PID, LOG_DAEMON);
-
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
