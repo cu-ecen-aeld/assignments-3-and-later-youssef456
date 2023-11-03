@@ -16,11 +16,13 @@ DESC="AESD Socket Application"
 case "$1" in
   start)
     echo "Starting $DESC: $NAME"
-    start-stop-daemon --start --background --make-pidfile --pidfile /var/tmp/$NAME.pid --exec $DAEMON -- $DAEMON_ARGS
+    #start-stop-daemon --start --background --make-pidfile --pidfile /var/tmp/$NAME.pid --exec $DAEMON -- $DAEMON_ARGS
+    start-stop-daemon -S -n aesdsocket -a /usr/bin/aesdsocket -- -d
     ;;
   stop)
     echo "Stopping $DESC: $NAME"
-    start-stop-daemon --stop --signal TERM --pidfile /var/tmp/$NAME.pid
+    #start-stop-daemon --stop --signal TERM --pidfile /var/tmp/$NAME.pid
+    start-stop-daemon -K -n aesdsocket
     ;;
   restart)
     $0 stop
