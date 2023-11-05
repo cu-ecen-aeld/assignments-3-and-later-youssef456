@@ -1,173 +1,341 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+#include <string.h>
 #include <signal.h>
 #include <syslog.h>
-#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
-#include <sys/file.h>
-#include <sys/file.h>
-#include <sys/file.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <linux/fs.h>
+#include <pthread.h>
+#include <sys/queue.h>
+#include <sys/time.h>
 
-#define PORT 9000
-#define MAX_PACKET_SIZE 4096
-#define DATA_FILE "/var/tmp/aesdsocketdata"
-#define PID_FILE "/var/run/aesdsocket.pid"
+#define PORT "9000"
+#define BACKLOG 10
+#define BUF_LEN 1024
+#define TIMESTAMP_STRING_LENGTH 100
 
-int listen_socket, data_fd;
+#define USE_AESD_CHAR_DEVICE 1
 
-void signal_handler(int signo) {
-    if (signo == SIGINT || signo == SIGTERM) {
-        syslog(LOG_INFO, "Caught signal, exiting");
+#ifdef USE_AESD_CHAR_DEVICE
+    #define PATHNAME "/dev/aesdchar"
+#else
+    #define PATHNAME "/var/tmp/aesdsocketdata"
+#endif
 
-        // Close and remove the PID file
-        if (data_fd != -1)
-            close(data_fd);
-        if (listen_socket != -1)
-            close(listen_socket);
-        remove(DATA_FILE);
-        remove(PID_FILE);
+int sockfd;
+int fd;
+pthread_mutex_t mutex;
 
-        closelog();
-        exit(EXIT_SUCCESS);
+#ifndef USE_AESD_CHAR_DEVICE
+/*Structure for timer thread*/
+typedef struct {
+    pthread_t thread_id;
+    pthread_mutex_t mutex;
+    int interval_in_s;
+}timestamp_t;
+
+timestamp_t timestamp;
+#endif
+
+/*structure for thread*/
+typedef struct thread_data {
+    pthread_t thread_id;
+    int newsockfd;
+    struct sockaddr_storage clientaddr;
+    pthread_mutex_t mutex;
+    int thread_complete_success;
+}thread_data_t;
+
+
+/*structure for slist nodes*/
+typedef struct slist_data_s {
+    thread_data_t thread_params;
+    SLIST_ENTRY(slist_data_s) entries;
+} slist_data_t;
+
+/*Initialize slist head*/
+slist_data_t *datap = NULL;
+SLIST_HEAD(slisthead, slist_data_s) head;
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
     }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-void handle_connection(int client_socket) {
-    char client_ip[INET_ADDRSTRLEN];
-    struct sockaddr_in client_addr;
-    socklen_t addr_len = sizeof(client_addr);
+/************************************************************************************************
+                        Thread function to handle socket communication
+************************************************************************************************/
 
-    if (getpeername(client_socket, (struct sockaddr *)&client_addr, &addr_len) == 0) {
-        inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-        syslog(LOG_INFO, "Accepted connection from %s", client_ip);
-    } else {
-        syslog(LOG_ERR, "Failed to get client IP address");
-    }
+void* thread_socket(void* thread_param) {
 
-    char buffer[MAX_PACKET_SIZE];
-    ssize_t bytes_received;
+    char buf[BUF_LEN];
+    char transmit_buffer[BUF_LEN];
+    fd = open(PATHNAME, O_RDWR | O_CREAT | O_APPEND, S_IWUSR | S_IRUSR | S_IWGRP | S_IRGRP | S_IROTH);
+    thread_data_t *thread_func_param = (thread_data_t *)thread_param;
+    struct sockaddr_storage clientaddr = thread_func_param->clientaddr;
+    char s[INET6_ADDRSTRLEN];
+    inet_ntop(clientaddr.ss_family, get_in_addr((struct sockaddr *)&clientaddr), s, sizeof s);
+    syslog(LOG_USER | LOG_INFO, "Accepted connection from %s\n", s);
 
-    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
-        if (write(data_fd, buffer, bytes_received) == -1) {
-            syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
+    while(1) {
+        memset(buf, '\0', BUF_LEN);
+        size_t recv_bytes = recv(thread_func_param->newsockfd, buf, BUF_LEN, 0);
+        if(recv_bytes == -1) {
+            perror("recv");
+            exit(EXIT_FAILURE);
+        }
+        #ifndef USE_AESD_CHAR_DEVICE
+        pthread_mutex_lock(&thread_func_param->mutex);
+        #endif
+        write(fd, buf, recv_bytes);
+        #ifndef USE_AESD_CHAR_DEVICE
+        pthread_mutex_unlock(&thread_func_param->mutex);
+        #endif
+        if(buf[recv_bytes-1] == '\n') {
             break;
         }
+    }
+    lseek(fd, 0, SEEK_SET);
+    memset(transmit_buffer, '\0', BUF_LEN);
+    ssize_t read_bytes;
+    while((read_bytes = read(fd, transmit_buffer, BUF_LEN)) > 0) {
+        send(thread_func_param->newsockfd, transmit_buffer, read_bytes, 0);
+    }
+    close(thread_func_param->newsockfd);
+    close(fd);
+    syslog(LOG_INFO, "Closed connection from %s\n", s);
+    thread_func_param->thread_complete_success = 1;
+    return thread_func_param;
+    //pthread_exit(NULL);
+}
 
-        for (int i = 0; i < bytes_received; i++) {
-            if (buffer[i] == '\n') {
-                lseek(data_fd, 0, SEEK_SET);
-                char read_buffer[MAX_PACKET_SIZE];
-                ssize_t bytes_read;
-                while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
-                    if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
-                        syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
-                        break;
-                    }
-                }
-            }
+/************************************************************************************************
+                        Thread function to log timestamp
+************************************************************************************************/
+
+/*This part of the code was referred from Suraj Ajjampur's github repository
+Credits to: https://github.com/cu-ecen-aeld/assignments-3-and-later-Suraj-Ajjampur/blob/master/server/aesdsocket.c*/
+
+#ifndef USE_AESD_CHAR_DEVICE
+void* thread_timestamp(void* thread_param) {
+    timestamp_t *thread_func_param = (timestamp_t *)thread_param;
+
+    time_t current_time;
+    struct tm *local_time;
+    char formatted_timestamp[TIMESTAMP_STRING_LENGTH];
+    struct timespec time_spec;
+    syslog(LOG_INFO, "Time logging thread activated.");
+    while(1) {
+        clock_gettime(CLOCK_MONOTONIC, &time_spec);
+        time_spec.tv_sec += thread_func_param->interval_in_s;
+        clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &time_spec, NULL);
+
+        time(&current_time);
+        local_time = localtime(&current_time);
+        int length_of_timestamp = strftime(formatted_timestamp, sizeof(formatted_timestamp), "timestamp: %Y, %b %d, %H:%M:%S\n", local_time);
+
+        /*Get mutex lock and write to file*/
+
+        pthread_mutex_lock(&thread_func_param->mutex);
+        int bytes_written = write(fd, formatted_timestamp, length_of_timestamp);
+        if(bytes_written == -1) {
+            perror("write");
         }
-    }
+        pthread_mutex_unlock(&thread_func_param->mutex);
 
-    syslog(LOG_INFO, "Closed connection from %s", client_ip);
-    close(client_socket);
+        /*Unlock mutex*/
+    }
+    pthread_exit(NULL);
+}
+#endif
+
+
+/************************************************************************************************
+                        Signal handler to handle SIGINT and SIGTERM
+************************************************************************************************/
+
+static void signal_handler(int signo) {
+    syslog(LOG_INFO, "Caught Signal, exiting\n");
+    close(sockfd);
+    close(fd);
+    #ifndef USE_AESD_CHAR_DEVICE
+    remove(PATHNAME);
+    #endif
+    closelog();
+    while(!SLIST_FIRST(&head)) {
+        datap = SLIST_FIRST(&head);
+        SLIST_REMOVE_HEAD(&head, entries);
+        pthread_join(datap->thread_params.thread_id, NULL);
+        pthread_mutex_destroy(&datap->thread_params.mutex);
+        free(datap);
+    }
+    pthread_mutex_destroy(&mutex);
+    exit(EXIT_SUCCESS);
 }
 
-void write_pid_file() {
-    int pid_fd = open(PID_FILE, O_CREAT | O_RDWR, 0644);
-    if (pid_fd == -1) {
-        syslog(LOG_ERR, "Failed to open the PID file: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
 
-    if (flock(pid_fd, LOCK_EX | LOCK_NB) == -1) {
-        syslog(LOG_ERR, "Failed to lock the PID file: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    char pid_str[16];
-    snprintf(pid_str, sizeof(pid_str), "%d\n", getpid());
-    if (write(pid_fd, pid_str, strlen(pid_str)) == -1) {
-        syslog(LOG_ERR, "Failed to write to the PID file: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-}
+/************************************************************************************************
+                        Main function
+************************************************************************************************/
 
 int main(int argc, char *argv[]) {
-    if (argc > 1 && strcmp(argv[1], "-d") == 0) {
-        int pid_fd = open(PID_FILE, O_RDONLY);
-        if (pid_fd != -1) {
-            char pid_str[16];
-            ssize_t n = read(pid_fd, pid_str, sizeof(pid_str));
-            if (n > 0) {
-                pid_t existing_pid = atoi(pid_str);
-                if (kill(existing_pid, 0) == 0) {
-                    syslog(LOG_ERR, "Daemon is already running with PID %d.", existing_pid);
-                    close(pid_fd);
-                    exit(EXIT_FAILURE);
-                }
+
+    /*Open syslog connection for logging*/
+    openlog("aesdsocket", LOG_PID, LOG_USER);
+
+    /*Initialize mutex*/
+    pthread_mutex_init(&mutex, NULL);
+
+    /*Check whether -d argument is present*/
+    if(argc == 2) {
+        if(strcmp(argv[1], "-d") == 0) {
+            /*Daemonize the process*/
+            pid_t pid, sid;
+            pid = fork();
+            if(pid < 0) {
+                exit(EXIT_FAILURE);
             }
-            close(pid_fd);
+            if(pid > 0) {
+                exit(EXIT_SUCCESS);
+            }
+            //umask(0);
+            sid = setsid();
+            if(sid < 0) {
+                exit(EXIT_FAILURE);
+            }
+            if((chdir("/")) < 0) {
+                exit(EXIT_FAILURE);
+            }
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
         }
+    }
+    #ifndef USE_AESD_CHAR_DEVICE
+    remove(PATHNAME);
+    #endif
 
-        pid_t pid = fork();
-        if (pid < 0) {
-            perror("Fork failed");
-            return EXIT_FAILURE;
-        } else if (pid > 0) {
-            return EXIT_SUCCESS;
-        }
-
-        setsid();
-        umask(0);
-        chdir("/");
-        close(STDIN_FILENO);
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
-        write_pid_file();
+    /*Register signal_handler as our signal handler for SIGINT*/
+    if (signal (SIGINT, signal_handler) == SIG_ERR) {
+        fprintf (stderr, "Cannot handle SIGINT!\n");
+        exit (EXIT_FAILURE);
     }
 
-    openlog("aesdsocket", LOG_PID, LOG_DAEMON);
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
+    /*Register signal_handler as our signal handler for SIGTERM*/
+    if (signal (SIGTERM, signal_handler) == SIG_ERR) {
+        fprintf (stderr, "Cannot handle SIGINT!\n");
+        exit (EXIT_FAILURE);
+    }    
 
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = INADDR_ANY;
+    /*Define variables and structures for socket communication*/
+    struct addrinfo hints;
+    struct sockaddr_storage clientaddr;
+    struct addrinfo *servinfo, *p;
+    socklen_t clientsize = sizeof(struct sockaddr_storage);
+    int status;
+    int newsockfd;
+    int yes = 1;
 
-    if ((listen_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        syslog(LOG_ERR, "Failed to create socket: %s", strerror(errno));
-        return EXIT_FAILURE;
+    /*Define head for slist*/
+    SLIST_INIT(&head);
+
+    /*Fill up hints structure for getaddrinfo*/
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    /*Get address information using getaddrinfo*/
+    if((status = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+        exit(EXIT_FAILURE);
     }
 
-    if (bind(listen_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        syslog(LOG_ERR, "Failed to bind to port %d: %s", PORT, strerror(errno));
-        return EXIT_FAILURE;
-    }
-
-    if (listen(listen_socket, 5) == -1) {
-        syslog(LOG_ERR, "Failed to listen on the socket: %s", strerror(errno));
-        return EXIT_FAILURE;
-    }
-
-    data_fd = open(DATA_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-    while (1) {
-        int client_socket = accept(listen_socket, NULL, NULL);
-        if (client_socket == -1) {
-            syslog(LOG_ERR, "Failed to accept connection: %s", strerror(errno));
+    /*loop through all the results, create a socket and bind to the first we can*/
+    for(p = servinfo; p != NULL;p = p->ai_next) {
+        if((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+            perror("socket:");
             continue;
         }
-        handle_connection(client_socket);
+        
+        if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+            perror("setsockopt");
+            exit(EXIT_FAILURE);
+        }
+
+        if(bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+            close(sockfd);
+            perror("bind");
+            continue;
+        }
+        break;
     }
 
-    return EXIT_SUCCESS;
-}
+    /*servinfo is no longer required*/
+    freeaddrinfo(servinfo);
 
+    if(p == NULL) {
+        fprintf(stderr, "server: failed to bind\n");
+        exit(EXIT_FAILURE);
+    }
+
+    #ifndef USE_AESD_CHAR_DEVICE
+    timestamp.interval_in_s = 10;
+    timestamp.mutex = mutex;
+    pthread_create(&timestamp.thread_id, NULL, thread_timestamp, &timestamp);
+    #endif
+
+    if(listen(sockfd, BACKLOG) == -1) {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    while(1) {
+        /*Accept incoming connections*/
+        newsockfd = accept(sockfd, (struct sockaddr*)&clientaddr, &clientsize);
+        if(newsockfd == -1) {
+            perror("accept");
+            continue;
+        }
+
+        /*Add thread_params to the slist*/
+        datap = (slist_data_t *)malloc(sizeof(slist_data_t));
+        if(datap == NULL) {
+            perror("malloc");
+            exit(EXIT_FAILURE);
+        }
+        datap->thread_params.newsockfd = newsockfd;
+        datap->thread_params.clientaddr = clientaddr;
+        datap->thread_params.thread_complete_success = 0;
+        datap->thread_params.mutex = mutex;
+
+        pthread_create(&(datap->thread_params.thread_id), NULL, thread_socket, &datap->thread_params);
+        SLIST_INSERT_HEAD(&head, datap, entries);
+
+        /*Check if any thread has completed*/
+        SLIST_FOREACH(datap, &head, entries) {
+            if(datap->thread_params.thread_complete_success == 1) {
+                int ret = pthread_join(datap->thread_params.thread_id, NULL);
+                if(ret != 0) {
+                    perror("pthread_join");
+                    exit(EXIT_FAILURE);
+                }
+                SLIST_REMOVE(&head, datap, slist_data_s, entries);
+                free(datap);           
+            }
+        }
+    }    
+}
