@@ -1,127 +1,324 @@
-==12283== Memcheck, a memory error detector
-==12283== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==12283== Using Valgrind-3.17.0-07f0cdcbb4-20210319X and LibVEX; rerun with -h for copyright info
-==12283== Command: ./aesdsocket
-==12283== Parent PID: 12281
-==12283== 
---12283-- 
---12283-- Valgrind options:
---12283--    --error-exitcode=1
---12283--    --leak-check=full
---12283--    --show-leak-kinds=all
---12283--    --track-origins=yes
---12283--    --errors-for-leak-kinds=definite
---12283--    --verbose
---12283--    --log-file=valgrind-out.txt
---12283-- Contents of /proc/version:
---12283--   Linux version 6.2.0-34-generic (buildd@bos03-amd64-059) (x86_64-linux-gnu-gcc-11 (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #34~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep  7 13:12:03 UTC 2
---12283-- 
---12283-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-rdtscp-sse3-ssse3
---12283-- Page sizes: currently 4096, max supported 4096
---12283-- Valgrind library directory: /usr/libexec/valgrind
---12283-- Reading syms from /home/youssef/aesd-assignments/server/aesdsocket
---12283-- Reading syms from /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
---12283--   Considering /usr/lib/debug/.build-id/97/18d3757f00d2366056830aae09698dbd35e32c.debug ..
---12283--   .. build-id is valid
---12283-- Reading syms from /usr/libexec/valgrind/memcheck-amd64-linux
---12283--    object doesn't have a symbol table
---12283--    object doesn't have a dynamic symbol table
---12283-- Scheduler: using generic scheduler lock implementation.
---12283-- Reading suppressions file: /usr/libexec/valgrind/default.supp
-==12283== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-12283-by-root-on-???
-==12283== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-12283-by-root-on-???
-==12283== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-12283-by-root-on-???
-==12283== 
-==12283== TO CONTROL THIS PROCESS USING vgdb (which you probably
-==12283== don't want to do, unless you know exactly what you're doing,
-==12283== or are doing some strange experiment):
-==12283==   /usr/bin/vgdb --pid=12283 ...command...
-==12283== 
-==12283== TO DEBUG THIS PROCESS USING GDB: start GDB like this
-==12283==   /path/to/gdb ./aesdsocket
-==12283== and then give GDB the following command
-==12283==   target remote | /usr/bin/vgdb --pid=12283
-==12283== --pid is optional if only one valgrind process is running
-==12283== 
---12283-- REDIR: 0x402aa40 (ld-linux-x86-64.so.2:strlen) redirected to 0x580bd712 (???)
---12283-- REDIR: 0x402a810 (ld-linux-x86-64.so.2:index) redirected to 0x580bd72c (???)
---12283-- Reading syms from /usr/libexec/valgrind/vgpreload_core-amd64-linux.so
---12283--    object doesn't have a symbol table
---12283-- Reading syms from /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so
---12283--    object doesn't have a symbol table
-==12283== WARNING: new redirection conflicts with existing -- ignoring it
---12283--     old: 0x0402aa40 (strlen              ) R-> (0000.0) 0x580bd712 ???
---12283--     new: 0x0402aa40 (strlen              ) R-> (2007.0) 0x0484ed80 strlen
---12283-- REDIR: 0x4027220 (ld-linux-x86-64.so.2:strcmp) redirected to 0x484fc90 (strcmp)
---12283-- REDIR: 0x402afa0 (ld-linux-x86-64.so.2:mempcpy) redirected to 0x48538f0 (mempcpy)
---12283-- Reading syms from /usr/lib/x86_64-linux-gnu/libc.so.6
---12283--   Considering /usr/lib/debug/.build-id/a4/3bfc8428df6623cd498c9c0caeb91aec9be4f9.debug ..
---12283--   .. build-id is valid
---12283-- WARNING: unhandled amd64-linux syscall: 334
-==12283==    at 0x40151D1: rseq_register_current_thread (rseq-internal.h:37)
-==12283==    by 0x40151D1: __tls_init_tp (dl-tls_init_tp.c:108)
-==12283==    by 0x4020E07: init_tls (rtld.c:821)
-==12283==    by 0x402464B: dl_main (rtld.c:2045)
-==12283==    by 0x401F83B: _dl_sysdep_start (dl-sysdep.c:256)
-==12283==    by 0x4021597: _dl_start_final (rtld.c:507)
-==12283==    by 0x4021597: _dl_start (rtld.c:596)
-==12283==    by 0x4020297: ??? (in /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2)
---12283-- You may be able to write your own handler.
---12283-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
---12283-- Nevertheless we consider this a bug.  Please report
---12283-- it at http://valgrind.org/support/bug_reports.html.
---12283-- REDIR: 0x4915720 (libc.so.6:strnlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49159e0 (libc.so.6:strpbrk) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49152e0 (libc.so.6:strcmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4933cd0 (libc.so.6:wcsnlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49166d0 (libc.so.6:memset) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4932540 (libc.so.6:wcslen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916c10 (libc.so.6:memcpy@@GLIBC_2.14) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4932370 (libc.so.6:wcschr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915260 (libc.so.6:index) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915960 (libc.so.6:rindex) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49165a0 (libc.so.6:memmove) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49323f0 (libc.so.6:wcscmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49169e0 (libc.so.6:stpncpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49329b0 (libc.so.6:wmemchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915830 (libc.so.6:strncmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916a70 (libc.so.6:strcasecmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915420 (libc.so.6:strcspn) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4932470 (libc.so.6:wcscpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49151d0 (libc.so.6:strcat) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916b60 (libc.so.6:strncasecmp_l) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916480 (libc.so.6:bcmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x491e570 (libc.so.6:memrchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4918010 (libc.so.6:strchrnul) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915390 (libc.so.6:strcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916b10 (libc.so.6:strcasecmp_l) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49156a0 (libc.so.6:strlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49158d0 (libc.so.6:strncpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916950 (libc.so.6:stpcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49163f0 (libc.so.6:memchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4915b00 (libc.so.6:strspn) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x49167d0 (libc.so.6:mempcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4916ac0 (libc.so.6:strncasecmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4917f80 (libc.so.6:rawmemchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
---12283-- REDIR: 0x4927650 (libc.so.6:__strrchr_sse2) redirected to 0x484e7b0 (__strrchr_sse2)
---12283-- REDIR: 0x4927440 (libc.so.6:__strchrnul_sse2) redirected to 0x4853400 (strchrnul)
---12283-- REDIR: 0x492c890 (libc.so.6:__strcpy_sse2_unaligned) redirected to 0x484edb0 (strcpy)
---12283-- REDIR: 0x49120a0 (libc.so.6:malloc) redirected to 0x48487c0 (malloc)
---12283-- REDIR: 0x4913520 (libc.so.6:calloc) redirected to 0x484d970 (calloc)
---12283-- REDIR: 0x4927950 (libc.so.6:__strlen_sse2) redirected to 0x484ecc0 (__strlen_sse2)
---12283-- REDIR: 0x49123e0 (libc.so.6:free) redirected to 0x484b1b0 (free)
---12283-- REDIR: 0x4931870 (libc.so.6:memcpy@GLIBC_2.2.5) redirected to 0x484fdc0 (memcpy@GLIBC_2.2.5)
---12283-- REDIR: 0x4915fc0 (libc.so.6:__GI_strstr) redirected to 0x4853b90 (__strstr_sse2)
---12283-- REDIR: 0x4a0fd30 (libc.so.6:__memcmp_sse4_1) redirected to 0x4852040 (__memcmp_sse4_1)
---12283-- REDIR: 0x491fd70 (libc.so.6:__strcmp_sse2_unaligned) redirected to 0x484fb90 (strcmp)
---12283-- REDIR: 0x4931f60 (libc.so.6:__memset_sse2_unaligned) redirected to 0x4852830 (memset)
---12283-- REDIR: 0x4931850 (libc.so.6:__mempcpy_sse2_unaligned) redirected to 0x4853510 (mempcpy)
---12283-- REDIR: 0x4912740 (libc.so.6:realloc) redirected to 0x484dbf0 (realloc)
-==12283== 
-==12283== HEAP SUMMARY:
-==12283==     in use at exit: 0 bytes in 0 blocks
-==12283==   total heap usage: 40 allocs, 40 frees, 102,580 bytes allocated
-==12283== 
-==12283== All heap blocks were freed -- no leaks are possible
-==12283== 
-==12283== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==5331== Memcheck, a memory error detector
+==5331== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==5331== Using Valgrind-3.17.0-07f0cdcbb4-20210319X and LibVEX; rerun with -h for copyright info
+==5331== Command: ./aesdsocket
+==5331== Parent PID: 5326
+==5331== 
+--5331-- 
+--5331-- Valgrind options:
+--5331--    --error-exitcode=1
+--5331--    --leak-check=full
+--5331--    --show-leak-kinds=all
+--5331--    --track-origins=yes
+--5331--    --errors-for-leak-kinds=definite
+--5331--    --verbose
+--5331--    --log-file=valgrind-out.txt
+--5331-- Contents of /proc/version:
+--5331--   Linux version 6.2.0-34-generic (buildd@bos03-amd64-059) (x86_64-linux-gnu-gcc-11 (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #34~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Thu Sep  7 13:12:03 UTC 2
+--5331-- 
+--5331-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-rdtscp-sse3-ssse3
+--5331-- Page sizes: currently 4096, max supported 4096
+--5331-- Valgrind library directory: /usr/libexec/valgrind
+--5331-- Reading syms from /home/youssef/aesd-assignments/server/aesdsocket
+--5331-- Reading syms from /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+--5331--   Considering /usr/lib/debug/.build-id/97/18d3757f00d2366056830aae09698dbd35e32c.debug ..
+--5331--   .. build-id is valid
+--5331-- Reading syms from /usr/libexec/valgrind/memcheck-amd64-linux
+--5331--    object doesn't have a symbol table
+--5331--    object doesn't have a dynamic symbol table
+--5331-- Scheduler: using generic scheduler lock implementation.
+--5331-- Reading suppressions file: /usr/libexec/valgrind/default.supp
+==5331== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-5331-by-root-on-???
+==5331== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-5331-by-root-on-???
+==5331== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-5331-by-root-on-???
+==5331== 
+==5331== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==5331== don't want to do, unless you know exactly what you're doing,
+==5331== or are doing some strange experiment):
+==5331==   /usr/bin/vgdb --pid=5331 ...command...
+==5331== 
+==5331== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==5331==   /path/to/gdb ./aesdsocket
+==5331== and then give GDB the following command
+==5331==   target remote | /usr/bin/vgdb --pid=5331
+==5331== --pid is optional if only one valgrind process is running
+==5331== 
+--5331-- REDIR: 0x402aa40 (ld-linux-x86-64.so.2:strlen) redirected to 0x580bd712 (???)
+--5331-- REDIR: 0x402a810 (ld-linux-x86-64.so.2:index) redirected to 0x580bd72c (???)
+--5331-- Reading syms from /usr/libexec/valgrind/vgpreload_core-amd64-linux.so
+--5331--    object doesn't have a symbol table
+--5331-- Reading syms from /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so
+--5331--    object doesn't have a symbol table
+==5331== WARNING: new redirection conflicts with existing -- ignoring it
+--5331--     old: 0x0402aa40 (strlen              ) R-> (0000.0) 0x580bd712 ???
+--5331--     new: 0x0402aa40 (strlen              ) R-> (2007.0) 0x0484ed80 strlen
+--5331-- REDIR: 0x4027220 (ld-linux-x86-64.so.2:strcmp) redirected to 0x484fc90 (strcmp)
+--5331-- REDIR: 0x402afa0 (ld-linux-x86-64.so.2:mempcpy) redirected to 0x48538f0 (mempcpy)
+--5331-- Reading syms from /usr/lib/x86_64-linux-gnu/libc.so.6
+--5331--   Considering /usr/lib/debug/.build-id/a4/3bfc8428df6623cd498c9c0caeb91aec9be4f9.debug ..
+--5331--   .. build-id is valid
+--5331-- WARNING: unhandled amd64-linux syscall: 334
+==5331==    at 0x40151D1: rseq_register_current_thread (rseq-internal.h:37)
+==5331==    by 0x40151D1: __tls_init_tp (dl-tls_init_tp.c:108)
+==5331==    by 0x4020E07: init_tls (rtld.c:821)
+==5331==    by 0x402464B: dl_main (rtld.c:2045)
+==5331==    by 0x401F83B: _dl_sysdep_start (dl-sysdep.c:256)
+==5331==    by 0x4021597: _dl_start_final (rtld.c:507)
+==5331==    by 0x4021597: _dl_start (rtld.c:596)
+==5331==    by 0x4020297: ??? (in /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- REDIR: 0x4915720 (libc.so.6:strnlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49159e0 (libc.so.6:strpbrk) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49152e0 (libc.so.6:strcmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4933cd0 (libc.so.6:wcsnlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49166d0 (libc.so.6:memset) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4932540 (libc.so.6:wcslen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916c10 (libc.so.6:memcpy@@GLIBC_2.14) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4932370 (libc.so.6:wcschr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915260 (libc.so.6:index) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915960 (libc.so.6:rindex) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49165a0 (libc.so.6:memmove) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49323f0 (libc.so.6:wcscmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49169e0 (libc.so.6:stpncpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49329b0 (libc.so.6:wmemchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915830 (libc.so.6:strncmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916a70 (libc.so.6:strcasecmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915420 (libc.so.6:strcspn) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4932470 (libc.so.6:wcscpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49151d0 (libc.so.6:strcat) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916b60 (libc.so.6:strncasecmp_l) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916480 (libc.so.6:bcmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x491e570 (libc.so.6:memrchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4918010 (libc.so.6:strchrnul) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915390 (libc.so.6:strcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916b10 (libc.so.6:strcasecmp_l) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49156a0 (libc.so.6:strlen) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49158d0 (libc.so.6:strncpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916950 (libc.so.6:stpcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49163f0 (libc.so.6:memchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4915b00 (libc.so.6:strspn) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x49167d0 (libc.so.6:mempcpy) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4916ac0 (libc.so.6:strncasecmp) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4917f80 (libc.so.6:rawmemchr) redirected to 0x483f1c0 (_vgnU_ifunc_wrapper)
+--5331-- REDIR: 0x4927650 (libc.so.6:__strrchr_sse2) redirected to 0x484e7b0 (__strrchr_sse2)
+--5331-- REDIR: 0x4913520 (libc.so.6:calloc) redirected to 0x484d970 (calloc)
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10AF9A: main (aesdsocket.c:202)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- REDIR: 0x49120a0 (libc.so.6:malloc) redirected to 0x48487c0 (malloc)
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- REDIR: 0x49123e0 (libc.so.6:free) redirected to 0x484b1b0 (free)
+--5331-- REDIR: 0x4927440 (libc.so.6:__strchrnul_sse2) redirected to 0x4853400 (strchrnul)
+--5331-- REDIR: 0x492c890 (libc.so.6:__strcpy_sse2_unaligned) redirected to 0x484edb0 (strcpy)
+--5331-- REDIR: 0x4927950 (libc.so.6:__strlen_sse2) redirected to 0x484ecc0 (__strlen_sse2)
+--5331-- REDIR: 0x4931870 (libc.so.6:memcpy@GLIBC_2.2.5) redirected to 0x484fdc0 (memcpy@GLIBC_2.2.5)
+--5331-- REDIR: 0x4915fc0 (libc.so.6:__GI_strstr) redirected to 0x4853b90 (__strstr_sse2)
+--5331-- REDIR: 0x4a0fd30 (libc.so.6:__memcmp_sse4_1) redirected to 0x4852040 (__memcmp_sse4_1)
+--5331-- REDIR: 0x491fd70 (libc.so.6:__strcmp_sse2_unaligned) redirected to 0x484fb90 (strcmp)
+--5331-- REDIR: 0x4931f60 (libc.so.6:__memset_sse2_unaligned) redirected to 0x4852830 (memset)
+--5331-- REDIR: 0x4931850 (libc.so.6:__mempcpy_sse2_unaligned) redirected to 0x4853510 (mempcpy)
+--5331-- REDIR: 0x4912740 (libc.so.6:realloc) redirected to 0x484dbf0 (realloc)
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+--5331-- WARNING: unhandled amd64-linux syscall: 435
+==5331==    at 0x4993A2D: clone3 (clone3.S:62)
+==5331==    by 0x4993A90: __clone_internal (clone-internal.c:54)
+==5331==    by 0x49016D8: create_thread (pthread_create.c:295)
+==5331==    by 0x49021FF: pthread_create@@GLIBC_2.34 (pthread_create.c:828)
+==5331==    by 0x10B1AC: main (aesdsocket.c:245)
+--5331-- You may be able to write your own handler.
+--5331-- Read the file README_MISSING_SYSCALL_OR_IOCTL.
+--5331-- Nevertheless we consider this a bug.  Please report
+--5331-- it at http://valgrind.org/support/bug_reports.html.
+==5331== 
+==5331== HEAP SUMMARY:
+==5331==     in use at exit: 272 bytes in 1 blocks
+==5331==   total heap usage: 133 allocs, 132 frees, 314,157 bytes allocated
+==5331== 
+==5331== Searching for pointers to 1 not-freed blocks
+==5331== Checked 8,495,192 bytes
+==5331== 
+==5331== 272 bytes in 1 blocks are possibly lost in loss record 1 of 1
+==5331==    at 0x484DA25: calloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==5331==    by 0x40147D9: calloc (rtld-malloc.h:44)
+==5331==    by 0x40147D9: allocate_dtv (dl-tls.c:375)
+==5331==    by 0x40147D9: _dl_allocate_tls (dl-tls.c:634)
+==5331==    by 0x49027B4: allocate_stack (allocatestack.c:430)
+==5331==    by 0x49027B4: pthread_create@@GLIBC_2.34 (pthread_create.c:647)
+==5331==    by 0x10AF9A: main (aesdsocket.c:202)
+==5331== 
+==5331== LEAK SUMMARY:
+==5331==    definitely lost: 0 bytes in 0 blocks
+==5331==    indirectly lost: 0 bytes in 0 blocks
+==5331==      possibly lost: 272 bytes in 1 blocks
+==5331==    still reachable: 0 bytes in 0 blocks
+==5331==         suppressed: 0 bytes in 0 blocks
+==5331== 
+==5331== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

@@ -12,31 +12,60 @@
 #include <errno.h>
 #include <netinet/in.h>
 #include <sys/file.h>
-#include <sys/file.h>
-#include <sys/file.h>
+#include <pthread.h>
+#include <time.h>
 
 #define PORT 9000
 #define MAX_PACKET_SIZE 4096
 #define DATA_FILE "/var/tmp/aesdsocketdata"
 #define PID_FILE "/var/run/aesdsocket.pid"
+#define TIMESTAMP_INTERVAL 10
 
-int listen_socket, data_fd;
+int listen_socket = -1, data_fd = -1;
+pthread_mutex_t data_mutex;
+pthread_mutex_t timestamp_mutex;
+time_t last_timestamp;
 
 void signal_handler(int signo) {
     if (signo == SIGINT || signo == SIGTERM) {
         syslog(LOG_INFO, "Caught signal, exiting");
 
-        // Close and remove the PID file
+        pthread_mutex_lock(&data_mutex);
         if (data_fd != -1)
             close(data_fd);
         if (listen_socket != -1)
             close(listen_socket);
         remove(DATA_FILE);
         remove(PID_FILE);
+        pthread_mutex_unlock(&data_mutex);
 
         closelog();
         exit(EXIT_SUCCESS);
     }
+}
+
+void append_timestamp() {
+    char timestamp[50];
+    struct tm current_time;
+    time_t t = time(NULL);
+
+    if (localtime_r(&t, &current_time) == NULL) {
+        syslog(LOG_ERR, "Failed to get current time: %s", strerror(errno));
+        return;
+    }
+
+    if (strftime(timestamp, sizeof(timestamp), "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &current_time) == 0) {
+        syslog(LOG_ERR, "Failed to format timestamp: %s", strerror(errno));
+        return;
+    }
+
+    pthread_mutex_lock(&timestamp_mutex);
+    if (write(data_fd, timestamp, strlen(timestamp)) == -1) {
+        syslog(LOG_ERR, "Failed to write timestamp to %s: %s", DATA_FILE, strerror(errno));
+    }
+    pthread_mutex_unlock(&timestamp_mutex);
+
+    last_timestamp = t;
 }
 
 void handle_connection(int client_socket) {
@@ -55,10 +84,13 @@ void handle_connection(int client_socket) {
     ssize_t bytes_received;
 
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+        pthread_mutex_lock(&data_mutex);
         if (write(data_fd, buffer, bytes_received) == -1) {
             syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
+            pthread_mutex_unlock(&data_mutex);
             break;
         }
+        pthread_mutex_unlock(&data_mutex);
 
         for (int i = 0; i < bytes_received; i++) {
             if (buffer[i] == '\n') {
@@ -93,9 +125,28 @@ void write_pid_file() {
 
     char pid_str[16];
     snprintf(pid_str, sizeof(pid_str), "%d\n", getpid());
+
+    pthread_mutex_lock(&data_mutex);
     if (write(pid_fd, pid_str, strlen(pid_str)) == -1) {
         syslog(LOG_ERR, "Failed to write to the PID file: %s", strerror(errno));
         exit(EXIT_FAILURE);
+    }
+    pthread_mutex_unlock(&data_mutex);
+}
+
+void* connection_handler(void* client_socket_ptr) {
+    int client_socket = *((int*)client_socket_ptr);
+    free(client_socket_ptr);
+
+    handle_connection(client_socket);
+
+    return NULL;
+}
+
+void* timestamp_updater(void* arg) {
+    while (1) {
+        sleep(TIMESTAMP_INTERVAL);
+        append_timestamp();
     }
 }
 
@@ -137,6 +188,25 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
+    pthread_t timestamp_thread;
+
+    if (pthread_mutex_init(&data_mutex, NULL) != 0) {
+        syslog(LOG_ERR, "Failed to initialize the data_mutex");
+        return EXIT_FAILURE;
+    }
+
+    if (pthread_mutex_init(&timestamp_mutex, NULL) != 0) {
+        syslog(LOG_ERR, "Failed to initialize the timestamp_mutex");
+        return EXIT_FAILURE;
+    }
+
+    last_timestamp = time(NULL);
+
+    if (pthread_create(&timestamp_thread, NULL, timestamp_updater, NULL) != 0) {
+        syslog(LOG_ERR, "Failed to create the timestamp updater thread");
+        return EXIT_FAILURE;
+    }
+
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
@@ -165,8 +235,28 @@ int main(int argc, char *argv[]) {
             syslog(LOG_ERR, "Failed to accept connection: %s", strerror(errno));
             continue;
         }
-        handle_connection(client_socket);
+
+        int* client_socket_ptr = (int*)malloc(sizeof(int));
+        if (client_socket_ptr == NULL) {
+            syslog(LOG_ERR, "Failed to allocate memory for client_socket_ptr");
+            close(client_socket);
+            continue;
+        }
+        *client_socket_ptr = client_socket;
+
+        pthread_t thread;
+        if (pthread_create(&thread, NULL, connection_handler, (void*)client_socket_ptr) != 0) {
+            syslog(LOG_ERR, "Failed to create a thread");
+            free(client_socket_ptr);
+            close(client_socket);
+            continue;
+        }
+
+        pthread_detach(thread);
     }
+
+    pthread_mutex_destroy(&data_mutex);
+    pthread_mutex_destroy(&timestamp_mutex);
 
     return EXIT_SUCCESS;
 }
