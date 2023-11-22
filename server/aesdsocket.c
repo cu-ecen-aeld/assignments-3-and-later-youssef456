@@ -13,17 +13,31 @@
 #include <netinet/in.h>
 #include <sys/file.h>
 #include <pthread.h>
-#include <time.h>
+
+#ifdef USE_AESD_CHAR_DEVICE
+#include <sys/ioctl.h>
+#include <linux/aesdchar.h>
+#endif
 
 #define PORT 9000
 #define MAX_PACKET_SIZE 4096
+
+#ifndef USE_AESD_CHAR_DEVICE
 #define DATA_FILE "/var/tmp/aesdsocketdata"
+#endif
+
 #define PID_FILE "/var/run/aesdsocket.pid"
 #define TIMESTAMP_INTERVAL 10
 
 int listen_socket = -1, data_fd = -1;
+
+#ifdef USE_AESD_CHAR_DEVICE
+int aesd_char_fd = -1;
+#endif
+
 pthread_mutex_t data_mutex;
 pthread_mutex_t timestamp_mutex;
+
 time_t last_timestamp;
 
 void signal_handler(int signo) {
@@ -31,12 +45,20 @@ void signal_handler(int signo) {
         syslog(LOG_INFO, "Caught signal, exiting");
 
         pthread_mutex_lock(&data_mutex);
+
         if (data_fd != -1)
             close(data_fd);
+
+#ifdef USE_AESD_CHAR_DEVICE
+        if (aesd_char_fd != -1)
+            close(aesd_char_fd);
+#endif
+
         if (listen_socket != -1)
             close(listen_socket);
-        remove(DATA_FILE);
+
         remove(PID_FILE);
+
         pthread_mutex_unlock(&data_mutex);
 
         closelog();
@@ -44,46 +66,18 @@ void signal_handler(int signo) {
     }
 }
 
-void append_timestamp() {
-    char timestamp[50];
-    struct tm current_time;
-    time_t t = time(NULL);
-
-    if (localtime_r(&t, &current_time) == NULL) {
-        syslog(LOG_ERR, "Failed to get current time: %s", strerror(errno));
-        return;
-    }
-
-    if (strftime(timestamp, sizeof(timestamp), "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &current_time) == 0) {
-        syslog(LOG_ERR, "Failed to format timestamp: %s", strerror(errno));
-        return;
-    }
-
-    pthread_mutex_lock(&timestamp_mutex);
-    if (write(data_fd, timestamp, strlen(timestamp)) == -1) {
-        syslog(LOG_ERR, "Failed to write timestamp to %s: %s", DATA_FILE, strerror(errno));
-    }
-    pthread_mutex_unlock(&timestamp_mutex);
-
-    last_timestamp = t;
-}
-
 void handle_connection(int client_socket) {
-    char client_ip[INET_ADDRSTRLEN];
-    struct sockaddr_in client_addr;
-    socklen_t addr_len = sizeof(client_addr);
-
-    if (getpeername(client_socket, (struct sockaddr *)&client_addr, &addr_len) == 0) {
-        inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-        syslog(LOG_INFO, "Accepted connection from %s", client_ip);
-    } else {
-        syslog(LOG_ERR, "Failed to get client IP address");
-    }
-
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes_received;
 
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+#ifdef USE_AESD_CHAR_DEVICE
+        // Redirect writes to /dev/aesdchar
+        if (write(aesd_char_fd, buffer, bytes_received) == -1) {
+            syslog(LOG_ERR, "Failed to write data to /dev/aesdchar: %s", strerror(errno));
+            break;
+        }
+#else
         pthread_mutex_lock(&data_mutex);
         if (write(data_fd, buffer, bytes_received) == -1) {
             syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
@@ -92,22 +86,20 @@ void handle_connection(int client_socket) {
         }
         pthread_mutex_unlock(&data_mutex);
 
-        for (int i = 0; i < bytes_received; i++) {
-            if (buffer[i] == '\n') {
-                lseek(data_fd, 0, SEEK_SET);
-                char read_buffer[MAX_PACKET_SIZE];
-                ssize_t bytes_read;
-                while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
-                    if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
-                        syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
-                        break;
-                    }
-                }
+        // Send accumulated data back to the client
+        lseek(data_fd, 0, SEEK_SET);
+        char read_buffer[MAX_PACKET_SIZE];
+        ssize_t bytes_read;
+        while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
+            if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
+                syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
+                break;
             }
         }
+#endif
     }
 
-    syslog(LOG_INFO, "Closed connection from %s", client_ip);
+    syslog(LOG_INFO, "Closed connection");
     close(client_socket);
 }
 
@@ -126,12 +118,21 @@ void write_pid_file() {
     char pid_str[16];
     snprintf(pid_str, sizeof(pid_str), "%d\n", getpid());
 
+#ifdef USE_AESD_CHAR_DEVICE
+    pthread_mutex_lock(&data_mutex);
+    if (write(aesd_char_fd, pid_str, strlen(pid_str)) == -1) {
+        syslog(LOG_ERR, "Failed to write to /dev/aesdchar: %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    pthread_mutex_unlock(&data_mutex);
+#else
     pthread_mutex_lock(&data_mutex);
     if (write(pid_fd, pid_str, strlen(pid_str)) == -1) {
         syslog(LOG_ERR, "Failed to write to the PID file: %s", strerror(errno));
         exit(EXIT_FAILURE);
     }
     pthread_mutex_unlock(&data_mutex);
+#endif
 }
 
 void* connection_handler(void* client_socket_ptr) {
@@ -146,7 +147,28 @@ void* connection_handler(void* client_socket_ptr) {
 void* timestamp_updater(void* arg) {
     while (1) {
         sleep(TIMESTAMP_INTERVAL);
-        append_timestamp();
+#ifdef USE_AESD_CHAR_DEVICE
+        // Timestamp printing is removed
+#else
+        pthread_mutex_lock(&timestamp_mutex);
+        char timestamp[50];
+        time_t t = time(NULL);
+        if (t - last_timestamp >= TIMESTAMP_INTERVAL) {
+            struct tm current_time;
+            if (localtime_r(&t, &current_time) != NULL) {
+                strftime(timestamp, sizeof(timestamp), "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &current_time);
+                pthread_mutex_lock(&data_mutex);
+                if (write(data_fd, timestamp, strlen(timestamp)) == -1) {
+                    syslog(LOG_ERR, "Failed to write timestamp to %s: %s", DATA_FILE, strerror(errno));
+                }
+                pthread_mutex_unlock(&data_mutex);
+            } else {
+                syslog(LOG_ERR, "Failed to get current time: %s", strerror(errno));
+            }
+            last_timestamp = t;
+        }
+        pthread_mutex_unlock(&timestamp_mutex);
+#endif
     }
 }
 
@@ -226,6 +248,13 @@ int main(int argc, char *argv[]) {
         syslog(LOG_ERR, "Failed to listen on the socket: %s", strerror(errno));
         return EXIT_FAILURE;
     }
+
+#ifdef USE_AESD_CHAR_DEVICE
+    if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
+        syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+#endif
 
     data_fd = open(DATA_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
