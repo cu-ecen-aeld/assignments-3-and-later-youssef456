@@ -238,7 +238,7 @@ void aesd_cleanup_module(void)
 
     unregister_chrdev_region(devno, 1);
 
-
+}
 
 module_init(aesd_init_module);
 module_exit(aesd_cleanup_module);

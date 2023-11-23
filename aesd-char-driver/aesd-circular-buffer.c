@@ -13,7 +13,7 @@
 #else
 #include <string.h>
 #endif
-#include <stdio.h>
+///#include <stdio.h>
 #include "aesd-circular-buffer.h"
 
 /**
