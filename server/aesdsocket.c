@@ -85,6 +85,19 @@ void handle_connection(int client_socket) {
 
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
         pthread_mutex_lock(&data_mutex);
+        
+        int append_flags = O_WRONLY | O_APPEND | O_CREAT;
+        if (data_fd == -1) {
+            // If the file descriptor is not yet open, open it in append mode
+            data_fd = open(DATA_FILE, append_flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+            if (data_fd == -1) {
+                syslog(LOG_ERR, "Failed to open %s: %s", DATA_FILE, strerror(errno));
+                pthread_mutex_unlock(&data_mutex);
+                break;
+            }
+        }
+        
+        
         if (write(data_fd, buffer, bytes_received) == -1) {
             syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
             pthread_mutex_unlock(&data_mutex);
