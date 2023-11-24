@@ -22,6 +22,7 @@
 #else
 #  define PDEBUG(fmt, args...) /* not debugging: nothing */
 #endif
+#include "aesd-circular-buffer.h"
 
 struct aesd_dev
 {
@@ -35,7 +36,5 @@ struct aesd_dev
     size_t tmp_size;                        
     unsigned long buffer_size;                
 };
-};
-
 
 #endif /* AESD_CHAR_DRIVER_AESDCHAR_H_ */
