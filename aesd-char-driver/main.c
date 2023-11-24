@@ -204,28 +204,20 @@ int aesd_init_module(void)
 
 void aesd_cleanup_module(void)
 {
-    dev_t devno = MKDEV(aesd_major, aesd_minor);
+    struct aesd_circular_buffer *buffer = &aesd_device.aesd_cb;
+    struct aesd_buffer_entry *entry;
 
     cdev_del(&aesd_device.cdev);
 
-    /**
-     * TODO: cleanup AESD specific poritions here as necessary
-     */
-     
-
-    // Lock to ensure safe access to the history buffer during cleanup
-    mutex_lock(&aesd_mutex);
-
-    // Logic to free memory associated with write commands more than 10 writes ago
-    for (int i = 0; i < HISTORY_BUFFER_SIZE; ++i) {
-        kfree(history_buffer[i].data);
+    AESD_CIRCULAR_BUFFER_FOREACH(entry, buffer) {
+        if (entry->size > 0 && entry->buffptr) {
+            kfree(entry->buffptr);
+            entry->size = 0;
+        }
     }
 
-    // Unlock the mutex before unregistering the device
-    mutex_unlock(&aesd_mutex);
-
-    unregister_chrdev_region(devno, 1);
-
+    mutex_destroy(&aesd_device.mx_lock);
+    unregister_chrdev_region(MKDEV(aesd_major, aesd_minor), 1);
 }
 
 module_init(aesd_init_module);
