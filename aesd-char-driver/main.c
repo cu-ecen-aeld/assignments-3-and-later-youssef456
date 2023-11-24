@@ -19,15 +19,6 @@
 #include <linux/fs.h> // file_operations
 #include "aesdchar.h"
 
-#define HISTORY_BUFFER_SIZE 10
-#define MAX_WRITE_COMMAND_SIZE 4096
-
-// Define a structure to represent each write command
-struct write_command {
-    char *data;             // Pointer to the allocated memory for command content
-    size_t size;            // Size of the allocated memory
-};
-
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
@@ -36,19 +27,10 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
-struct write_command history_buffer[HISTORY_BUFFER_SIZE];  // History buffer for the most recent 10 write commands
-int history_index = 0;  // Index to keep track of the next available slot in the history buffer
-
-static DEFINE_MUTEX(aesd_mutex);
-
 int aesd_open(struct inode *inode, struct file *filp)
 {
     PDEBUG("open");
-    /**
-     * TODO: handle open
-     */
-    struct aesd_dev *dev;
-    PDEBUG("open");
+    aesd_dev *dev;
     dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
     filp->private_data = dev;
     return 0;
@@ -69,65 +51,81 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
     ssize_t retval = 0;
     struct aesd_dev *dev = filp->private_data;
     struct aesd_buffer_entry *start_entry;
-    size_t start_entry_off = 0, read_length;
+    size_t start_entry_off = 0, read_length = 0;
 
-    if (!buf)
+    if (buf == NULL) {
         return -EFAULT;
+    }
+    start_entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->aesd_cb,
+            *f_pos, &start_entry_off);
 
-    start_entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->aesd_cb, *f_pos, &start_entry_off);
-
-    if (!start_entry)
+    if (start_entry == NULL) {
         return 0;
-
-    read_length = min(start_entry->size - start_entry_off, count);
-
-    if (copy_to_user(buf, start_entry->buffptr + start_entry_off, read_length))
+    }  
+    read_length = start_entry->size - start_entry_off;
+    if (read_length > count) {
+        read_length = count;
+    }
+    if (copy_to_user(buf, &(start_entry->buffptr[start_entry_off]), read_length)) {
         return -EFAULT;
-
+    }
     retval = read_length;
-    *f_pos += read_length;
+    *f_pos = *f_pos + read_length;
 
     return retval;
-}
+
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                    loff_t *f_pos)
 {
-    ssize_t retval = -ENOMEM;
+     ssize_t retval = -ENOMEM;
     struct aesd_dev *dev = filp->private_data;
     struct aesd_buffer_entry new_entry;
+    uint8_t in_pos = 0;
+    size_t bytes_missing = 0;
 
-    if (!buf) {
+    if (buf == NULL) {
         return -EFAULT;
     }
 
     if (mutex_lock_interruptible(&dev->mx_lock)) {
         return -ERESTARTSYS;
     }
-
     if (dev->tmp_size > 0) {
+
         dev->tmp_buf = krealloc(dev->tmp_buf, dev->tmp_size + count, GFP_KERNEL);
+        if (!dev->tmp_buf) {
+            return -ENOMEM;
+        }
+
+        memset(&dev->tmp_buf[dev->tmp_size], 0, count);
+
+        bytes_missing = copy_from_user(&dev->tmp_buf[dev->tmp_size], buf, count);
+
+        retval = count - bytes_missing;
+        dev->tmp_size += retval;
+
     } else {
         dev->tmp_buf = kmalloc(count, GFP_KERNEL);
-    }
+        if (!dev->tmp_buf) {
+            return -ENOMEM;
+        }
 
-    if (!dev->tmp_buf) {
-        retval = -ENOMEM;
-        goto unlock;
-    }
+        memset(dev->tmp_buf, 0, count);
 
-    memset(dev->tmp_buf + dev->tmp_size, 0, count);
-    if (copy_from_user(dev->tmp_buf + dev->tmp_size, buf, count)) {
-        retval = -EFAULT;
-        goto free_tmp_buf;
-    }
+        bytes_missing = copy_from_user(dev->tmp_buf, buf, count);
 
-    retval = count;
-    dev->tmp_size += count;
+        retval = count - bytes_missing;
+        dev->tmp_size = retval;
+    }
 
     if (memchr(dev->tmp_buf, '\n', dev->tmp_size)) {
-        if (dev->aesd_cb.full && dev->aesd_cb.entry[dev->aesd_cb.in_offs].buffptr != NULL) {
-            kfree(dev->aesd_cb.entry[dev->aesd_cb.in_offs].buffptr);
+        if (dev->aesd_cb.full) {
+            in_pos = dev->aesd_cb.in_offs;
+            if (dev->aesd_cb.entry[in_pos].buffptr != NULL) {
+                kfree(dev->aesd_cb.entry[in_pos].buffptr);
+            }
+            dev->aesd_cb.entry[in_pos].size = 0;
         }
 
         new_entry.buffptr = dev->tmp_buf;
@@ -136,15 +134,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
         dev->tmp_buf = NULL;
         dev->tmp_size = 0;
-    }
+    } 
 
-free_tmp_buf:
     mutex_unlock(&dev->mx_lock);
     dev->buffer_size += retval;
-    return retval;
-
-unlock:
-    mutex_unlock(&dev->mx_lock);
     return retval;
 }
 
