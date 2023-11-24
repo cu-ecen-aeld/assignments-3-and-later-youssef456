@@ -169,48 +169,47 @@ int aesd_init_module(void)
 {
     dev_t dev = 0;
     int result;
-
-    result = alloc_chrdev_region(&dev, aesd_minor, 1, "aesdchar");
+    result = alloc_chrdev_region(&dev, aesd_minor, 1,"aesdchar");
+    aesd_major = MAJOR(dev);
     if (result < 0) {
-        printk(KERN_WARNING "Failed to allocate char device region\n");
+        printk(KERN_WARNING "Failed device %d\n", aesd_major);
         return result;
     }
+    memset(&aesd_device,0,sizeof(struct aesd_dev));
 
-    memset(&aesd_device, 0, sizeof(struct aesd_dev));
     aesd_circular_buffer_init(&aesd_device.aesd_cb);
+    aesd_device.tmp_buf = NULL;
+    aesd_device.tmp_size = 0;
     mutex_init(&aesd_device.mx_lock);
 
     result = aesd_setup_cdev(&aesd_device);
-    if (result) {
+
+    if( result ) {
         unregister_chrdev_region(dev, 1);
-        return result;
     }
-
-    aesd_device.tmp_buf = NULL;
-    aesd_device.tmp_size = 0;
-
-    aesd_major = MAJOR(dev);
-
     return result;
 }
 
 
 void aesd_cleanup_module(void)
 {
+    uint8_t index;
     struct aesd_circular_buffer *buffer = &aesd_device.aesd_cb;
     struct aesd_buffer_entry *entry;
 
+    dev_t devno = MKDEV(aesd_major, aesd_minor);
+
     cdev_del(&aesd_device.cdev);
 
-    AESD_CIRCULAR_BUFFER_FOREACH(entry, buffer) {
-        if (entry->size > 0 && entry->buffptr) {
+    AESD_CIRCULAR_BUFFER_FOREACH(entry, buffer, index) {
+        if ((entry->size > 0) && (entry->buffptr != NULL)) {
             kfree(entry->buffptr);
             entry->size = 0;
         }
     }
-
     mutex_destroy(&aesd_device.mx_lock);
-    unregister_chrdev_region(MKDEV(aesd_major, aesd_minor), 1);
+
+    unregister_chrdev_region(devno, 1);
 }
 
 module_init(aesd_init_module);
