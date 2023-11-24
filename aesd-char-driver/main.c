@@ -78,7 +78,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                    loff_t *f_pos)
 {
-     ssize_t retval = -ENOMEM;
+    ssize_t retval = -ENOMEM;
     struct aesd_dev *dev = filp->private_data;
     struct aesd_buffer_entry new_entry;
     uint8_t in_pos = 0;

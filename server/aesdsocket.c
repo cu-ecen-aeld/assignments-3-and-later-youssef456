@@ -103,6 +103,8 @@ void handle_connection(int client_socket) {
                         break;
                     }
                 }
+                // Append a newline after sending the contents of the file
+                send(client_socket, "\n", 1, 0);
             }
         }
     }
