@@ -9,6 +9,9 @@ LDFLAGS ?= -lpthread -lrt
 
 default: $(TARGET)
 
+EXTRA_CFLAGS = -DUSE_AESD_CHAR_DEVICE=1
+EXTRA_CFLAGS += -USE_AESD_CHAR_DEVICE=1
+
 all: default
 
 aesdsocket: aesdsocket.o
