@@ -100,7 +100,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 *f_pos -= history_buffer[i].size;
                 continue;
             }
-
+            size_t copy_size = min(count - offset, history_buffer[i].size - *f_pos);
             if (copy_to_user(buf + offset, history_buffer[i].data + *f_pos, copy_size)) {
                 retval = -EFAULT;
                 goto free_temp_buffer;
