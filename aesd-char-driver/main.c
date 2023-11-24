@@ -64,122 +64,90 @@ int aesd_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
-ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     ssize_t retval = 0;
-    PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
-    /**
-     * TODO: handle read
-     */
-     
-    // Lock to ensure safe access to the history buffer
-    mutex_lock(&aesd_mutex);
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_buffer_entry *start_entry;
+    size_t start_entry_off = 0, read_length;
 
-    // Calculate the total size of the content in the history buffer
-    size_t total_size = 0;
-    for (int i = 0; i < HISTORY_BUFFER_SIZE; ++i) {
-        total_size += history_buffer[i].size;
-    }
+    if (!buf)
+        return -EFAULT;
 
-    // Allocate a temporary buffer to hold the concatenated content
-    char *temp_buffer = kmalloc(total_size, GFP_KERNEL);
-    if (!temp_buffer) {
-        retval = -ENOMEM;
-        goto out;
-    }
+    start_entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->aesd_cb, *f_pos, &start_entry_off);
 
-    // Copy the content of each write command to the temporary buffer
-    size_t offset = 0;
-    for (int i = 0; i < HISTORY_BUFFER_SIZE; ++i) {
-        if (history_buffer[i].data) {
-            size_t copy_size = min(count - offset, history_buffer[i].size);
+    if (!start_entry)
+        return 0;
 
-            // Skip content if it has been read before
-            if (*f_pos >= history_buffer[i].size) {
-                *f_pos -= history_buffer[i].size;
-                continue;
-            }
-            size_t copy_size = min(count - offset, history_buffer[i].size - *f_pos);
-            if (copy_to_user(buf + offset, history_buffer[i].data + *f_pos, copy_size)) {
-                retval = -EFAULT;
-                goto free_temp_buffer;
-            }
+    read_length = min(start_entry->size - start_entry_off, count);
 
-            offset += copy_size;
-        }
-    }
+    if (copy_to_user(buf, start_entry->buffptr + start_entry_off, read_length))
+        return -EFAULT;
 
-    // Update the file position
-    *f_pos += offset;
+    retval = read_length;
+    *f_pos += read_length;
 
-    // Set the return value to the number of bytes read
-    retval = offset;
-
-free_temp_buffer:
-    kfree(temp_buffer);
-
-out:
-    mutex_unlock(&aesd_mutex);
-    
     return retval;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+                   loff_t *f_pos)
 {
     ssize_t retval = -ENOMEM;
-    PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
-    /**
-     * TODO: handle write
-     */
-     // Lock to ensure safe access to the history buffer
-     
-    mutex_lock(&aesd_mutex);
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_buffer_entry new_entry;
 
-    // Allocate memory for the write command
-    char *data = kmalloc(count, GFP_KERNEL);
-    if (!data) {
-        retval = -ENOMEM;
-        goto out;
+    if (!buf) {
+        return -EFAULT;
     }
 
-    // Copy the data from user space
-    if (copy_from_user(data, buf, count)) {
+    if (mutex_lock_interruptible(&dev->mx_lock)) {
+        return -ERESTARTSYS;
+    }
+
+    if (dev->tmp_size > 0) {
+        dev->tmp_buf = krealloc(dev->tmp_buf, dev->tmp_size + count, GFP_KERNEL);
+    } else {
+        dev->tmp_buf = kmalloc(count, GFP_KERNEL);
+    }
+
+    if (!dev->tmp_buf) {
+        retval = -ENOMEM;
+        goto unlock;
+    }
+
+    memset(dev->tmp_buf + dev->tmp_size, 0, count);
+    if (copy_from_user(dev->tmp_buf + dev->tmp_size, buf, count)) {
         retval = -EFAULT;
-        goto free_data;
+        goto free_tmp_buf;
     }
 
-    // Find the index for the next available slot in the history buffer
-    int index = history_index % HISTORY_BUFFER_SIZE;
-
-    // Free memory associated with the write command at the current index
-    kfree(history_buffer[index].data);
-    
-    history_buffer[index].data = kmemdup(data, count, GFP_KERNEL);
-    if (!history_buffer[index].data) {
-        retval = -ENOMEM;
-        goto out;
-    }
-    history_buffer[index].size = count;
-
-    // Move to the next available slot in the history buffer
-    history_index++;
-
-    // Set the return value to the number of bytes written
     retval = count;
+    dev->tmp_size += count;
 
-free_data:
-    if (retval < 0) {
-        kfree(data);
+    if (memchr(dev->tmp_buf, '\n', dev->tmp_size)) {
+        if (dev->aesd_cb.full && dev->aesd_cb.entry[dev->aesd_cb.in_offs].buffptr != NULL) {
+            kfree(dev->aesd_cb.entry[dev->aesd_cb.in_offs].buffptr);
+        }
+
+        new_entry.buffptr = dev->tmp_buf;
+        new_entry.size = dev->tmp_size;
+        aesd_circular_buffer_add_entry(&dev->aesd_cb, &new_entry);
+
+        dev->tmp_buf = NULL;
+        dev->tmp_size = 0;
     }
 
-out:
-    // Unlock the mutex before returning
-    mutex_unlock(&aesd_mutex);
+free_tmp_buf:
+    mutex_unlock(&dev->mx_lock);
+    dev->buffer_size += retval;
+    return retval;
 
+unlock:
+    mutex_unlock(&dev->mx_lock);
     return retval;
 }
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .read =     aesd_read,
