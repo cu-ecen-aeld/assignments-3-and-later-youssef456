@@ -176,26 +176,31 @@ int aesd_init_module(void)
 {
     dev_t dev = 0;
     int result;
-    /**
-     * TODO: initialize the AESD specific portion of the device
-     */
-    result = alloc_chrdev_region(&dev, aesd_minor, 1,
-            "aesdchar");
-    aesd_major = MAJOR(dev);
+
+    result = alloc_chrdev_region(&dev, aesd_minor, 1, "aesdchar");
     if (result < 0) {
-        printk(KERN_WARNING "Can't get major %d\n", aesd_major);
+        printk(KERN_WARNING "Failed to allocate char device region\n");
         return result;
     }
-    memset(&aesd_device,0,sizeof(struct aesd_dev));
-    
+
+    memset(&aesd_device, 0, sizeof(struct aesd_dev));
+    aesd_circular_buffer_init(&aesd_device.aesd_cb);
+    mutex_init(&aesd_device.mx_lock);
+
     result = aesd_setup_cdev(&aesd_device);
-
-    if( result ) {
+    if (result) {
         unregister_chrdev_region(dev, 1);
+        return result;
     }
-    return result;
 
+    aesd_device.tmp_buf = NULL;
+    aesd_device.tmp_size = 0;
+
+    aesd_major = MAJOR(dev);
+
+    return result;
 }
+
 
 void aesd_cleanup_module(void)
 {
