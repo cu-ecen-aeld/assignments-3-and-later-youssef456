@@ -46,6 +46,10 @@ int aesd_open(struct inode *inode, struct file *filp)
     /**
      * TODO: handle open
      */
+    struct aesd_dev *dev;
+    PDEBUG("open");
+    dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+    filp->private_data = dev;
     return 0;
 }
 
@@ -70,7 +74,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     // Lock to ensure safe access to the history buffer
     mutex_lock(&aesd_mutex);
 
-// Calculate the total size of the content in the history buffer
+    // Calculate the total size of the content in the history buffer
     size_t total_size = 0;
     for (int i = 0; i < HISTORY_BUFFER_SIZE; ++i) {
         total_size += history_buffer[i].size;
