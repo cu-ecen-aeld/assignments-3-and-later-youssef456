@@ -23,7 +23,7 @@
 #define MAX_PACKET_SIZE 4096
 
 #ifndef USE_AESD_CHAR_DEVICE
-#define DATA_FILE "/var/tmp/aesdsocketdata"
+#define DATA_FILE "/dev/aesdchar"
 #endif
 
 #define PID_FILE "/var/run/aesdsocket.pid"
