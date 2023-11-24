@@ -35,6 +35,7 @@ MODULE_AUTHOR("Youssef"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
+
 struct write_command history_buffer[HISTORY_BUFFER_SIZE];  // History buffer for the most recent 10 write commands
 int history_index = 0;  // Index to keep track of the next available slot in the history buffer
 
@@ -71,6 +72,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
+     
     // Lock to ensure safe access to the history buffer
     mutex_lock(&aesd_mutex);
 
@@ -92,10 +94,18 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     for (int i = 0; i < HISTORY_BUFFER_SIZE; ++i) {
         if (history_buffer[i].data) {
             size_t copy_size = min(count - offset, history_buffer[i].size);
-            if (copy_to_user(buf + offset, history_buffer[i].data, copy_size)) {
+
+            // Skip content if it has been read before
+            if (*f_pos >= history_buffer[i].size) {
+                *f_pos -= history_buffer[i].size;
+                continue;
+            }
+
+            if (copy_to_user(buf + offset, history_buffer[i].data + *f_pos, copy_size)) {
                 retval = -EFAULT;
                 goto free_temp_buffer;
             }
+
             offset += copy_size;
         }
     }
@@ -124,6 +134,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
      * TODO: handle write
      */
      // Lock to ensure safe access to the history buffer
+     
     mutex_lock(&aesd_mutex);
 
     // Allocate memory for the write command
@@ -144,9 +155,12 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     // Free memory associated with the write command at the current index
     kfree(history_buffer[index].data);
-
-    // Save the new write command in the history buffer
-    history_buffer[index].data = data;
+    
+    history_buffer[index].data = kmemdup(data, count, GFP_KERNEL);
+    if (!history_buffer[index].data) {
+        retval = -ENOMEM;
+        goto out;
+    }
     history_buffer[index].size = count;
 
     // Move to the next available slot in the history buffer
@@ -161,9 +175,6 @@ free_data:
     }
 
 out:
-    // Unlock the mutex before returning
-    mutex_unlock(&aesd_mutex);
-
     // Unlock the mutex before returning
     mutex_unlock(&aesd_mutex);
 
