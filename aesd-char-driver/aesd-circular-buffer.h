@@ -51,6 +51,9 @@ struct aesd_circular_buffer
      */
     bool full;
     
+    size_t offset;        // Offset from the beginning of the circular buffer
+
+    
     
 };
 
