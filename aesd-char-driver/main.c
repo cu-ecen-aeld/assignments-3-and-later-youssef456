@@ -177,26 +177,59 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
     switch (cmd) {
     case AESDCHAR_IOCSEEKTO:
-        if (copy_from_user(&seek_params, (struct aesd_seekto __user *)arg, sizeof(struct aesd_seekto))) {
-            return -EFAULT;
-        }
+        if (copy_from_user(&seek_cmd, (const void __user *)arg, sizeof(seek_cmd)) != 0) {
+                retval = -EINVAL;
+                break;
+            }
 
-        // Validate the seek parameters
-	// Example modification assuming 'size' is the number of elements in the circular buffer
-        if (seek_params.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
-            seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size) {
-            return -EINVAL;
-        }
+            if ((seek_cmd.write_cmd < 0) ||
+               (seek_cmd.write_cmd > AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED))
+            {
+                retval = -EINVAL;
+                break;
+            }
 
-        // Set the file position based on the correct offset member
-        filp->f_pos = aesd_device.aesd_cb.entry[seek_params.write_cmd].offset + seek_params.write_cmd_offset;
-        break;
+            if (mutex_lock_interruptible(&dev->mx_lock)) {
+                retval = -ERESTARTSYS;
+                break;
+            } else {
+                mx_locked = true;
+            }
 
-    default:
-        return -ENOTTY; // Inappropriate ioctl for the device
+            for (index = 0; index < seek_cmd.write_cmd; index++) {
+                entry = &dev->aesd_cb.entry[index];
+                if ((entry->buffptr != NULL) && (entry->size > 0)) {
+                    loc_off += entry->size;
+                } else {
+                    retval = -EINVAL;
+                    break;
+                }
+            }
+
+            entry = &dev->aesd_cb.entry[seek_cmd.write_cmd];
+            if ((entry->buffptr != NULL) && (entry->size > 0)) {
+                if (seek_cmd.write_cmd_offset > entry->size) {
+                    retval = -EINVAL;
+                    break;                
+                }
+                loc_off += seek_cmd.write_cmd_offset;
+            } else {
+                retval = -EINVAL;
+                break;
+            }
+
+            filp->f_pos = loc_off;
+
+            break;
+        default:
+            retval = -EINVAL;
     }
 
-    return err;
+    if (mx_locked) {
+        mutex_unlock(&dev->mx_lock);
+    }
+
+    return retval;
 }
 
 struct file_operations aesd_fops = {
