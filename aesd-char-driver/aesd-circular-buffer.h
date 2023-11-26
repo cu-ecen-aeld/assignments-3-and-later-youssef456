@@ -29,6 +29,8 @@ struct aesd_buffer_entry
      * Number of bytes stored in buffptr
      */
     size_t size;
+    
+    size_t offset;        // Offset from the beginning of the circular buffer
 };
 
 struct aesd_circular_buffer
@@ -51,7 +53,7 @@ struct aesd_circular_buffer
      */
     bool full;
     
-    size_t offset;        // Offset from the beginning of the circular buffer
+
 
     
     
