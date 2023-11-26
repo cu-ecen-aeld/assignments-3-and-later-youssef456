@@ -34,7 +34,9 @@ struct aesd_dev
     struct mutex mx_lock;                   
     char *tmp_buf;                          
     size_t tmp_size;                        
-    unsigned long buffer_size;                
+    unsigned long buffer_size;      
+    size_t count;  // This member represents the number of elements in the circular buffer.
+          
 };
 
 #endif /* AESD_CHAR_DRIVER_AESDCHAR_H_ */

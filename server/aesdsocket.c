@@ -40,17 +40,6 @@ pthread_mutex_t timestamp_mutex;
 
 time_t last_timestamp;
 
-struct aesd_seekto {
-    /**
-     * The zero referenced write command to seek into
-     */
-    uint32_t write_cmd;
-    /**
-     * The zero referenced offset within the write
-     */
-    uint32_t write_cmd_offset;
-};
-
 void signal_handler(int signo) {
     if (signo == SIGINT || signo == SIGTERM) {
         syslog(LOG_INFO, "Caught signal, exiting");
