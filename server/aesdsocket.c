@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <sys/file.h>
 #include <pthread.h>
+#include "aesd_ioctl.h"  // Include the newly created header
 
 #ifdef USE_AESD_CHAR_DEVICE
 #include <sys/ioctl.h>

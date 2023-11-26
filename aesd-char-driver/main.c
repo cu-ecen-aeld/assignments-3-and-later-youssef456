@@ -144,45 +144,30 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
-    struct aesd_dev *dev = filp->private_data;
-    loff_t npos, err = 0;
+    loff_t newpos;
 
-    if (mutex_lock_interruptible(&dev->mx_lock)) {
-        return -ERESTARTSYS;
+    switch (whence) {
+    case SEEK_SET:
+        newpos = off;
+        break;
+
+    case SEEK_CUR:
+        newpos = filp->f_pos + off;
+        break;
+
+    case SEEK_END:
+        newpos = aesd_device.buffer_size + off;
+        break;
+
+    default:
+        return -EINVAL;
     }
 
-    switch(whence) {
-        case SEEK_SET:
-            npos = off;
-            break;
-        case SEEK_CUR:
-            npos = filp->f_pos + off;
-            break;
-        case SEEK_END:
-            npos = dev->buffer_size + off;
-            break;
-        default:
-            err++;
-            npos = -EINVAL;
-    }
+    if (newpos < 0)
+        return -EINVAL;
 
-    if (npos < 0) {
-        err++;
-        npos = -EINVAL;
-    }
-
-    if (npos > dev->buffer_size) {
-        err++;
-        npos = -EINVAL;
-    }
-
-    if (err == 0) {
-        filp->f_pos = npos;
-    }
-
-    mutex_unlock(&dev->mx_lock);
-
-    return npos;
+    filp->f_pos = newpos;
+    return newpos;
 }
 
 long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
