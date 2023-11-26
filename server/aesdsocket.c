@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <sys/file.h>
 #include <pthread.h>
+#include <aesd_ioctl.h>
 
 #ifdef USE_AESD_CHAR_DEVICE
 #include <sys/ioctl.h>
@@ -72,10 +73,36 @@ void handle_connection(int client_socket) {
 
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
 #ifdef USE_AESD_CHAR_DEVICE
-        // Redirect writes to /dev/aesdchar
-        if (write(aesd_char_fd, buffer, bytes_received) == -1) {
-            syslog(LOG_ERR, "Failed to write data to /dev/aesdchar: %s", strerror(errno));
-            break;
+        if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
+            unsigned int x, y;
+            if (sscanf(buffer + 19, "%u,%u", &x, &y) == 2) {
+                struct aesd_seekto seek_params = { .write_cmd = x, .write_cmd_offset = y };
+                if (ioctl(aesd_char_fd, AESDCHAR_IOCSEEKTO, &seek_params) == -1) {
+                    syslog(LOG_ERR, "Failed to perform AESDCHAR_IOCSEEKTO ioctl: %s", strerror(errno));
+                    break;
+                }
+            } else {
+                syslog(LOG_ERR, "Invalid AESDCHAR_IOCSEEKTO command format");
+                break;
+            }
+        } else {
+            pthread_mutex_lock(&data_mutex);
+            if (write(data_fd, buffer, bytes_received) == -1) {
+                syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
+                pthread_mutex_unlock(&data_mutex);
+                break;
+            }
+            pthread_mutex_unlock(&data_mutex);
+
+            lseek(data_fd, 0, SEEK_SET);
+            char read_buffer[MAX_PACKET_SIZE];
+            ssize_t bytes_read;
+            while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
+                if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
+                    syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
+                    break;
+                }
+            }
         }
 #else
         pthread_mutex_lock(&data_mutex);
@@ -283,6 +310,16 @@ int main(int argc, char *argv[]) {
 
         pthread_detach(thread);
     }
+#ifdef USE_AESD_CHAR_DEVICE
+    if (aesd_char_fd != -1)
+        close(aesd_char_fd);
+#endif
+
+    if (data_fd != -1)
+        close(data_fd);
+
+    if (listen_socket != -1)
+        close(listen_socket);
 
     pthread_mutex_destroy(&data_mutex);
     pthread_mutex_destroy(&timestamp_mutex);

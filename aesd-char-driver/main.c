@@ -18,6 +18,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
 #include "aesdchar.h"
+#include "aesd_ioctl.h"
 
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
@@ -141,12 +142,71 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     return retval;
 }
 
+loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
+{
+    loff_t newpos;
+
+    switch (whence) {
+    case SEEK_SET:
+        newpos = off;
+        break;
+
+    case SEEK_CUR:
+        newpos = filp->f_pos + off;
+        break;
+
+    case SEEK_END:
+        newpos = aesd_device.buffer_size + off;
+        break;
+
+    default:
+        return -EINVAL;
+    }
+
+    if (newpos < 0)
+        return -EINVAL;
+
+    filp->f_pos = newpos;
+    return newpos;
+}
+
+long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    int err = 0;
+    struct aesd_seekto seek_params;
+
+    switch (cmd) {
+    case AESDCHAR_IOCSEEKTO:
+        if (copy_from_user(&seek_params, (struct aesd_seekto __user *)arg, sizeof(struct aesd_seekto))) {
+            return -EFAULT;
+        }
+
+        // Your implementation for seeking based on seek_params.write_cmd and seek_params.write_cmd_offset
+        // ...
+        // Validate the seek parameters
+        if (seek_params.write_cmd >= aesd_device.aesd_cb.count ||
+            seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size) {
+            return -EINVAL;  // Invalid seek parameters
+        }
+        // Update the file position
+        filp->f_pos = /* Your calculated position based on the seek parameters */;
+        break;
+
+    default:
+        return -ENOTTY; // Inappropriate ioctl for the device
+    }
+
+    return err;
+}
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
+    .llseek = aesd_llseek,
+    .unlocked_ioctl = aesd_ioctl, 
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
