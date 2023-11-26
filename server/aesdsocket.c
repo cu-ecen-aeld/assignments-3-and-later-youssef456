@@ -13,7 +13,6 @@
 #include <netinet/in.h>
 #include <sys/file.h>
 #include <pthread.h>
-#include <aesd_ioctl.h>
 
 #ifdef USE_AESD_CHAR_DEVICE
 #include <sys/ioctl.h>
@@ -40,6 +39,17 @@ pthread_mutex_t data_mutex;
 pthread_mutex_t timestamp_mutex;
 
 time_t last_timestamp;
+
+struct aesd_seekto {
+    /**
+     * The zero referenced write command to seek into
+     */
+    uint32_t write_cmd;
+    /**
+     * The zero referenced offset within the write
+     */
+    uint32_t write_cmd_offset;
+};
 
 void signal_handler(int signo) {
     if (signo == SIGINT || signo == SIGTERM) {
