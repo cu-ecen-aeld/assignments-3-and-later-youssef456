@@ -35,7 +35,7 @@ struct aesd_dev
     char *tmp_buf;                          
     size_t tmp_size;                        
     unsigned long buffer_size;      
-    size_t count;  // This member represents the number of elements in the circular buffer.
+
           
 };
 

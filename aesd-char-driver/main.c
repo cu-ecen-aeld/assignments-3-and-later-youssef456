@@ -184,11 +184,13 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         // Your implementation for seeking based on seek_params.write_cmd and seek_params.write_cmd_offset
         // ...
         // Validate the seek parameters
-	if (seek_params.write_cmd >= aesd_device.aesd_cb.count || seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size) {
-	    return -EINVAL;
-	}
-        // Update the file position
-        // Calculate the new file position based on the seek parameters
+	// Example modification assuming 'count' is the number of elements in the circular buffer
+        if (seek_params.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
+            seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size) {
+            return -EINVAL;
+        }
+
+        // Set the file position based on the correct offset member
         filp->f_pos = aesd_device.aesd_cb.entry[seek_params.write_cmd].offset + seek_params.write_cmd_offset;
 
         break;
