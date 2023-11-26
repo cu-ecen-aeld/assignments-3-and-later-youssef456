@@ -182,7 +182,7 @@ void* timestamp_updater(void* arg) {
         if (t - last_timestamp >= TIMESTAMP_INTERVAL) {
             struct tm current_time;
             if (localtime_r(&t, &current_time) != NULL) {
-                strftime(timestamp, sizeof(timestamp), "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &current_time);
+                ///strftime(timestamp, sizeof(timestamp), "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &current_time);
                 pthread_mutex_lock(&data_mutex);
                 if (write(data_fd, timestamp, strlen(timestamp)) == -1) {
                     syslog(LOG_ERR, "Failed to write timestamp to %s: %s", DATA_FILE, strerror(errno));
