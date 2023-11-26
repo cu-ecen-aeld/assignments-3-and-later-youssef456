@@ -174,10 +174,16 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
     int err = 0;
     struct aesd_seekto seek_params;
-
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_seekto seek_cmd;
+    struct aesd_buffer_entry *entry;
+    loff_t loc_off = 0;
+    uint32_t index;
+    long retval = 0;
+    bool mx_locked = false;
     switch (cmd) {
     case AESDCHAR_IOCSEEKTO:
-        if (copy_from_user(&seek_cmd, (const void __user *)arg, sizeof(seek_cmd)) != 0) {
+         if (copy_from_user(&seek_cmd, (const void __user *)arg, sizeof(seek_cmd)) != 0) {
                 retval = -EINVAL;
                 break;
             }
