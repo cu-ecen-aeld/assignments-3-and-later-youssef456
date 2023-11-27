@@ -10,6 +10,8 @@ else
 endif
 
 EXTRA_CFLAGS += $(DEBFLAGS)
+EXTRA_CFLAGS += -DUSE_AESD_CHAR_DEVICE=1
+EXTRA_CFLAGS += -USE_AESD_CHAR_DEVICE=1
 
 ifneq ($(KERNELRELEASE),)
 # call from kernel build system
