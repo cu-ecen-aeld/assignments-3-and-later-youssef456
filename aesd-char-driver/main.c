@@ -141,68 +141,117 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     dev->buffer_size += retval;
     return retval;
 }
-
 loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
-    loff_t newpos;
+    struct aesd_dev *dev = filp->private_data;
+    loff_t npos, err = 0;
 
-    switch (whence) {
-    case SEEK_SET:
-        newpos = off;
-        break;
-
-    case SEEK_CUR:
-        newpos = filp->f_pos + off;
-        break;
-
-    case SEEK_END:
-        newpos = aesd_device.buffer_size + off;
-        break;
-
-    default:
-        return -EINVAL;
+    if (mutex_lock_interruptible(&dev->mx_lock)) {
+        return -ERESTARTSYS;
     }
 
-    if (newpos < 0)
-        return -EINVAL;
+    switch(whence) {
+        case SEEK_SET:
+            npos = off;
+            break;
+        case SEEK_CUR:
+            npos = filp->f_pos + off;
+            break;
+        case SEEK_END:
+            npos = dev->buffer_size + off;
+            break;
+        default:
+            err++;
+            npos = -EINVAL;
+    }
 
-    filp->f_pos = newpos;
-    return newpos;
+    if (npos < 0) {
+        err++;
+        npos = -EINVAL;
+    }
+
+    if (npos > dev->buffer_size) {
+        err++;
+        npos = -EINVAL;
+    }
+
+    if (err == 0) {
+        filp->f_pos = npos;
+    }
+
+    mutex_unlock(&dev->mx_lock);
+
+    return npos;
 }
 
 long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    int err = 0;
-    struct aesd_seekto seek_params;
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_seekto seek_cmd;
+    struct aesd_buffer_entry *entry;
+    loff_t loc_off = 0;
+    uint32_t index;
+    long retval = 0;
+    bool mx_locked = false;
 
     switch (cmd) {
-    case AESDCHAR_IOCSEEKTO:
-    if (copy_from_user(&seek_params, (struct aesd_seekto __user *)arg, sizeof(struct aesd_seekto)))
-    {
-        return -EFAULT;
+        case AESDCHAR_IOCSEEKTO:
+
+            if (copy_from_user(&seek_cmd, (const void __user *)arg, sizeof(seek_cmd)) != 0) {
+                retval = -EINVAL;
+                break;
+            }
+
+            if ((seek_cmd.write_cmd < 0) ||
+               (seek_cmd.write_cmd > AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED))
+            {
+                retval = -EINVAL;
+                break;
+            }
+
+            if (mutex_lock_interruptible(&dev->mx_lock)) {
+                retval = -ERESTARTSYS;
+                break;
+            } else {
+                mx_locked = true;
+            }
+
+            for (index = 0; index < seek_cmd.write_cmd; index++) {
+                entry = &dev->aesd_cb.entry[index];
+                if ((entry->buffptr != NULL) && (entry->size > 0)) {
+                    loc_off += entry->size;
+                } else {
+                    retval = -EINVAL;
+                    break;
+                }
+            }
+
+            entry = &dev->aesd_cb.entry[seek_cmd.write_cmd];
+            if ((entry->buffptr != NULL) && (entry->size > 0)) {
+                if (seek_cmd.write_cmd_offset > entry->size) {
+                    retval = -EINVAL;
+                    break;                
+                }
+                loc_off += seek_cmd.write_cmd_offset;
+            } else {
+                retval = -EINVAL;
+                break;
+            }
+
+            filp->f_pos = loc_off;
+
+            break;
+        default:
+            retval = -EINVAL;
     }
 
-    // Validate the seek parameters
-    if (seek_params.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
-        seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size)
-    {
-        return -EINVAL;
+    if (mx_locked) {
+        mutex_unlock(&dev->mx_lock);
     }
 
-    // Set the file position based on the correct offset member
-    filp->f_pos = aesd_device.aesd_cb.entry[seek_params.write_cmd].offset + seek_params.write_cmd_offset;
-
-    // Adjust the file position to consider the circular buffer's start
-    filp->f_pos %= aesd_device.aesd_cb.size;
-
-    break;
-
-    default:
-        return -ENOTTY; // Inappropriate ioctl for the device
-    }
-
-    return err;
+    return retval;
 }
+
 
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
@@ -210,9 +259,10 @@ struct file_operations aesd_fops = {
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
-    .llseek = aesd_llseek,
-    .unlocked_ioctl = aesd_ioctl, 
+    .llseek =   aesd_llseek,
+    .unlocked_ioctl = aesd_ioctl,
 };
+
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
 {
