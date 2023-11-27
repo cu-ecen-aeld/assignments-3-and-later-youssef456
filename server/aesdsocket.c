@@ -17,7 +17,6 @@
 
 #ifdef USE_AESD_CHAR_DEVICE
 #include <sys/ioctl.h>
-#include <linux/aesdchar.h>
 #endif
 
 #define PORT 9000
