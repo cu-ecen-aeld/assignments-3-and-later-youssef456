@@ -18,7 +18,7 @@ case "$1" in
   start)
     echo "Starting $DESC: $NAME"
     #start-stop-daemon --start --background --make-pidfile --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_ARGS
-    #start-stop-daemon -S -n aesdsocket -a /usr/bin/aesdsocket -- -d
+    start-stop-daemon -S -n aesdsocket -a /usr/bin/aesdsocket -- -d
     ;;
   stop)
     echo "Stopping $DESC: $NAME"

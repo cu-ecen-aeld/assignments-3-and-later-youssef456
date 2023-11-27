@@ -72,7 +72,15 @@ void handle_connection(int client_socket) {
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes_received;
 
-     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+    // Open the character device when needed
+    int aesd_char_fd = open("/dev/aesdchar", O_RDWR);
+    if (aesd_char_fd == -1) {
+        syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
+        close(client_socket);
+        return;
+    }
+    
+    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
 #ifdef USE_AESD_CHAR_DEVICE
         if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
             unsigned int x, y;
@@ -87,18 +95,13 @@ void handle_connection(int client_socket) {
                 break;
             }
         } else {
-            // Open the character device when needed
-            if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
-                syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
-                break;
-            }
-
             pthread_mutex_lock(&data_mutex);
             if (write(data_fd, buffer, bytes_received) == -1) {
                 syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
                 pthread_mutex_unlock(&data_mutex);
+                close(client_socket);
                 close(aesd_char_fd);  // Close the character device if write fails
-                break;
+                return;
             }
             pthread_mutex_unlock(&data_mutex);
 
@@ -108,13 +111,11 @@ void handle_connection(int client_socket) {
             while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
                 if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
                     syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
+                    close(client_socket);
                     close(aesd_char_fd);  // Close the character device if send fails
-                    break;
+                    return;
                 }
             }
-
-            // Close the character device after processing
-            close(aesd_char_fd);
         }
 #else
         pthread_mutex_lock(&data_mutex);
