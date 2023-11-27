@@ -77,7 +77,7 @@ void handle_connection(int client_socket) {
             unsigned int x, y;
             if (sscanf(buffer + 19, "%u,%u", &x, &y) == 2) {
                 struct aesd_seekto seek_params = { .write_cmd = x, .write_cmd_offset = y };
-                int file_number = fileno(fileFD);
+                int file_number = fileno(aesd_char_fd);
                 if (ioctl(file_number, AESDCHAR_IOCSEEKTO, &seek_params) == -1) {
                     syslog(LOG_ERR, "Failed to perform AESDCHAR_IOCSEEKTO ioctl: %s", strerror(errno));
                     break;
