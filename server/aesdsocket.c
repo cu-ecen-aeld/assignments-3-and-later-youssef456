@@ -22,10 +22,10 @@
 #define PORT 9000
 #define MAX_PACKET_SIZE 4096
 
-#if USE_AESD_CHAR_DEVICE == 1
-#define DATA_FILE = "/dev/aesdchar";
+#ifdef USE_AESD_CHAR_DEVICE
+#define DATA_FILE "/dev/aesdchar"
 #else
-#define DATA_FILE = "/var/tmp/aesdsocketdata";
+#define DATA_FILE "/var/tmp/aesdsocketdata"
 #endif
 
 #define PID_FILE "/var/run/aesdsocket.pid"
