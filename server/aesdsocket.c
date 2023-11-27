@@ -34,7 +34,6 @@ int listen_socket = -1, data_fd = -1;
 
 #ifdef USE_AESD_CHAR_DEVICE
 int aesd_char_fd = -1;
-char *dataFile = "/dev/aesdchar";
 #endif
 
 pthread_mutex_t data_mutex;
@@ -71,15 +70,14 @@ void signal_handler(int signo) {
 void handle_connection(int client_socket) {
     char buffer[MAX_PACKET_SIZE];
     ssize_t bytes_received;
-    FILE *fileFD = fopen(dataFile,"a+");
+
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
 #ifdef USE_AESD_CHAR_DEVICE
         if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
             unsigned int x, y;
             if (sscanf(buffer + 19, "%u,%u", &x, &y) == 2) {
                 struct aesd_seekto seek_params = { .write_cmd = x, .write_cmd_offset = y };
-                int file_number = fileno(fileFD);
-                if (ioctl(file_number, AESDCHAR_IOCSEEKTO, &seek_params) == -1) {
+                if (ioctl(aesd_char_fd, AESDCHAR_IOCSEEKTO, &seek_params) == -1) {
                     syslog(LOG_ERR, "Failed to perform AESDCHAR_IOCSEEKTO ioctl: %s", strerror(errno));
                     break;
                 }
@@ -127,7 +125,6 @@ void handle_connection(int client_socket) {
         }
 #endif
     }
-    fclose(fileFD);
 
     syslog(LOG_INFO, "Closed connection");
     close(client_socket);
