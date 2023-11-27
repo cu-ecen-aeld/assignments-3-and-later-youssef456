@@ -53,9 +53,7 @@ struct aesd_circular_buffer
      */
     bool full;
     
-
-
-    
+    size_t size; //to store the total size of the circular buffer
     
 };
 
