@@ -14,7 +14,7 @@ EXTRA_CFLAGS = -DUSE_AESD_CHAR_DEVICE=1
 all: default
 
 aesdsocket: aesdsocket.o
-	$(CC) $(CFLAGS) -o $(TARGET) aesdsocket.o $(LDFLAGS)
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -o $(TARGET) aesdsocket.o $(LDFLAGS)
 
 
 aesdsocket.o: aesdsocket.c
