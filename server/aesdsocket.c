@@ -138,7 +138,9 @@ void handle_connection(int client_socket) {
         }
 #endif
     }
-
+    // Close the character device after processing
+    close(aesd_char_fd);
+    
     syslog(LOG_INFO, "Closed connection");
     close(client_socket);
 }
@@ -290,10 +292,10 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef USE_AESD_CHAR_DEVICE
-    if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
-        syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
+    ///if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
+    ///    syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
+    ///    exit(EXIT_FAILURE);
+    ///}
 #endif
 
     data_fd = open(DATA_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
