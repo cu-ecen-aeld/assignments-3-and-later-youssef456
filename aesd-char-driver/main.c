@@ -177,20 +177,25 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
     switch (cmd) {
     case AESDCHAR_IOCSEEKTO:
-        if (copy_from_user(&seek_params, (struct aesd_seekto __user *)arg, sizeof(struct aesd_seekto))) {
-            return -EFAULT;
-        }
+    if (copy_from_user(&seek_params, (struct aesd_seekto __user *)arg, sizeof(struct aesd_seekto)))
+    {
+        return -EFAULT;
+    }
 
-        // Validate the seek parameters
-	// Example modification assuming 'size' is the number of elements in the circular buffer
-        if (seek_params.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
-            seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size) {
-            return -EINVAL;
-        }
+    // Validate the seek parameters
+    if (seek_params.write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED ||
+        seek_params.write_cmd_offset >= aesd_device.aesd_cb.entry[seek_params.write_cmd].size)
+    {
+        return -EINVAL;
+    }
 
-        // Set the file position based on the correct offset member
-        filp->f_pos = aesd_device.aesd_cb.entry[seek_params.write_cmd].offset + seek_params.write_cmd_offset;
-        break;
+    // Set the file position based on the correct offset member
+    filp->f_pos = aesd_device.aesd_cb.entry[seek_params.write_cmd].offset + seek_params.write_cmd_offset;
+
+    // Adjust the file position to consider the circular buffer's start
+    filp->f_pos %= aesd_device.aesd_cb.size;
+
+    break;
 
     default:
         return -ENOTTY; // Inappropriate ioctl for the device
