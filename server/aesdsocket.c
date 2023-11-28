@@ -69,79 +69,98 @@ void signal_handler(int signo) {
 }
 
 void handle_connection(int client_socket) {
-    char buffer[MAX_PACKET_SIZE];
-    ssize_t bytes_received;
+        bool packetComplete = false;
+    int retRecv = 0;
+    char buffer[BUFFER_SIZE] = {0};
+    char *outputBuffer = NULL;
+    char *sendBuffer = NULL;
+    ThreadsDef *params = (ThreadsDef *)threadParam;
+    int i, j = 0;
 
-    // Open the character device when needed
-    int aesd_char_fd = open("/dev/aesdchar", O_RDWR);
-    if (aesd_char_fd == -1) {
-        syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
-        close(client_socket);
-        return;
-    }
-    
-    while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
-        // Add a debugging statement to print the received data
-        printf("Received data: %.*s\n", (int)bytes_received, buffer);
+    outputBuffer = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+    memset(outputBuffer, 0, BUFFER_SIZE);
 
-#if USE_AESD_CHAR_DEVICE == 1
-        if (strncmp(outputBuffer, ioctl_string, strlen(ioctl_string)) == 0)
+
+    while (packetComplete == false)
+    {
+        retRecv = recv(params->threadFD, buffer, BUFFER_SIZE, 0);
+        if (retRecv < 0)
         {
+            syslog(LOG_ERR, "Socket rceive error %s.", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        else if (retRecv == 0)
+        {
+            break;
+        }
+
+        //accept till '\n'
+        for (i = 0; i < BUFFER_SIZE; i++)
+        {
+            printf("Before");
+
+            if (buffer[i] == '\n')
+            {
+                printf("Inside");
+                packetComplete = true;
+                i++;
+                break;
+            }
+        }
+
+        j += i;
+        data_count += i;
+
+        outputBuffer = (char *)realloc(outputBuffer, (j + 1));
+        strncat(outputBuffer, buffer, i + 1);
+        memset(buffer, 0, BUFFER_SIZE);
+    }
+
+    //start lock
+    pthread_mutex_lock(&mutexLock);
+    FILE *fileFD = fopen(dataFile,"a+");
+
+    //Check if we have got a IOCSEEKTO
+    if (strncmp(outputBuffer, ioctl_string, strlen(ioctl_string)) == 0)
+    {
         //IOCTL call with params
         struct aesd_seekto seek_params;
         sscanf(outputBuffer, "AESDCHAR_IOCSEEKTO:%d,%d", &seek_params.write_cmd, &seek_params.write_cmd_offset);
         
-        ioctl(aesd_char_fd, AESDCHAR_IOCSEEKTO, &seek_params);
-        }
-        else {
-            pthread_mutex_lock(&data_mutex);
-            if (write(data_fd, buffer, bytes_received) == -1) {
-                syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
-                pthread_mutex_unlock(&data_mutex);
-                close(client_socket);
-                close(aesd_char_fd);  // Close the character device if write fails
-                return;
-            }
-            pthread_mutex_unlock(&data_mutex);
+        //Get the file number to call IOCTL
+        int file_number = fileno(fileFD);
+        ioctl(file_number, AESDCHAR_IOCSEEKTO, &seek_params);
 
-            lseek(data_fd, 0, SEEK_SET);
-            char read_buffer[MAX_PACKET_SIZE];
-            ssize_t bytes_read;
-            while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
-                if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
-                    syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
-                    close(client_socket);
-                    close(aesd_char_fd);  // Close the character device if send fails
-                    return;
-                }
-            }
-        }
-#else
-        pthread_mutex_lock(&data_mutex);
-        if (write(data_fd, buffer, bytes_received) == -1) {
-            syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
-            pthread_mutex_unlock(&data_mutex);
-            break;
-        }
-        pthread_mutex_unlock(&data_mutex);
+    } else { //regular
 
-        // Send accumulated data back to the client
-        lseek(data_fd, 0, SEEK_SET);
-        char read_buffer[MAX_PACKET_SIZE];
-        ssize_t bytes_read;
-        while ((bytes_read = read(data_fd, read_buffer, sizeof(read_buffer))) > 0) {
-            if (send(client_socket, read_buffer, bytes_read, 0) == -1) {
-                syslog(LOG_ERR, "Failed to send data to the client: %s", strerror(errno));
-                break;
-            }
-        }
-#endif
+	    //Write buffer to file
+	    fwrite(outputBuffer,1, strlen(outputBuffer),fileFD);
+            //The specs mention not to close the file, we'll rewind to send the entire contents back
+	    rewind(fileFD);
     }
-    // Close the character device after processing
-    close(aesd_char_fd);
-    
-    syslog(LOG_INFO, "Closed connection");
-    close(client_socket);
+
+    //send back the contents of the file
+    int bytes_read=0;
+    sendBuffer = (char *)malloc(sizeof(char) * (1));
+
+    //may not be very efficient but works good for our data sizes
+    while((bytes_read = fread(sendBuffer, 1, 1, fileFD)) > 0)
+    {
+      send(params->threadFD, sendBuffer, bytes_read, 0);
+    }
+
+    //Close 
+    fclose(fileFD);
+    params->isDone = true;
+
+    //Release memory
+    free(outputBuffer);
+    free(sendBuffer);
+
+    //Unlock mutex
+    pthread_mutex_unlock(&mutexLock);
+
+    return params;
 }
 
 void write_pid_file() {
