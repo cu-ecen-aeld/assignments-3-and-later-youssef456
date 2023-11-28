@@ -16,41 +16,38 @@
 #include <linux/printk.h>
 #include <linux/types.h>
 #include <linux/cdev.h>
-#include <linux/fs.h>       // file_operations
-#include <linux/slab.h>		// kmalloc()
-
+#include <linux/fs.h> // file_operations
 #include "aesdchar.h"
 #include "aesd_ioctl.h"
 
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
-MODULE_AUTHOR("youssef456");
+MODULE_AUTHOR("Youssef"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
+    PDEBUG("open");
     struct aesd_dev *dev;
     dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
     filp->private_data = dev;
-
     return 0;
 }
 
 int aesd_release(struct inode *inode, struct file *filp)
 {
+    PDEBUG("release");
+    /**
+     * TODO: handle release
+     */
+     
     return 0;
 }
 
-/* 
- * Return partial or full content of recent 10 write commands in order received,
- * for any read attempt. Use f_pos to determine where to start read and count
- * specifies the number of bytes to return.
- */
-ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     ssize_t retval = 0;
     struct aesd_dev *dev = filp->private_data;
@@ -60,38 +57,27 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if (buf == NULL) {
         return -EFAULT;
     }
-
     start_entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->aesd_cb,
             *f_pos, &start_entry_off);
 
     if (start_entry == NULL) {
         return 0;
-    } 
-    
+    }  
     read_length = start_entry->size - start_entry_off;
     if (read_length > count) {
         read_length = count;
     }
-
     if (copy_to_user(buf, &(start_entry->buffptr[start_entry_off]), read_length)) {
         return -EFAULT;
     }
-
     retval = read_length;
     *f_pos = *f_pos + read_length;
 
     return retval;
-}
 
-/* 
- * Allocate memory (kmalloc) for each write command and save command in 
- * allocated memory each write command is \n character terminated and any none 
- * \n terminated command will remain and be appended to by future writes only
- * keep track of most recent 10 commands, overwrites should free memory before
- * overwritting command. 
- */
+}
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+                   loff_t *f_pos)
 {
     ssize_t retval = -ENOMEM;
     struct aesd_dev *dev = filp->private_data;
@@ -106,7 +92,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (mutex_lock_interruptible(&dev->mx_lock)) {
         return -ERESTARTSYS;
     }
-
     if (dev->tmp_size > 0) {
 
         dev->tmp_buf = krealloc(dev->tmp_buf, dev->tmp_size + count, GFP_KERNEL);
@@ -115,7 +100,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         }
 
         memset(&dev->tmp_buf[dev->tmp_size], 0, count);
-
 
         bytes_missing = copy_from_user(&dev->tmp_buf[dev->tmp_size], buf, count);
 
@@ -130,13 +114,11 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
         memset(dev->tmp_buf, 0, count);
 
-
         bytes_missing = copy_from_user(dev->tmp_buf, buf, count);
 
         retval = count - bytes_missing;
         dev->tmp_size = retval;
     }
-
 
     if (memchr(dev->tmp_buf, '\n', dev->tmp_size)) {
         if (dev->aesd_cb.full) {
@@ -162,45 +144,30 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
-    struct aesd_dev *dev = filp->private_data;
-    loff_t npos, err = 0;
+    loff_t newpos;
 
-    if (mutex_lock_interruptible(&dev->mx_lock)) {
-        return -ERESTARTSYS;
+    switch (whence) {
+    case SEEK_SET:
+        newpos = off;
+        break;
+
+    case SEEK_CUR:
+        newpos = filp->f_pos + off;
+        break;
+
+    case SEEK_END:
+        newpos = aesd_device.buffer_size + off;
+        break;
+
+    default:
+        return -EINVAL;
     }
 
-    switch(whence) {
-        case SEEK_SET:
-            npos = off;
-            break;
-        case SEEK_CUR:
-            npos = filp->f_pos + off;
-            break;
-        case SEEK_END:
-            npos = dev->buffer_size + off;
-            break;
-        default:
-            err++;
-            npos = -EINVAL;
-    }
+    if (newpos < 0)
+        return -EINVAL;
 
-    if (npos < 0) {
-        err++;
-        npos = -EINVAL;
-    }
-
-    if (npos > dev->buffer_size) {
-        err++;
-        npos = -EINVAL;
-    }
-
-    if (err == 0) {
-        filp->f_pos = npos;
-    }
-
-    mutex_unlock(&dev->mx_lock);
-
-    return npos;
+    filp->f_pos = newpos;
+    return newpos;
 }
 
 long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -271,15 +238,14 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     return retval;
 }
 
-
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
-    .llseek =   aesd_llseek,
-    .unlocked_ioctl = aesd_ioctl,
+    .llseek = aesd_llseek,
+    .unlocked_ioctl = aesd_ioctl, 
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
@@ -291,7 +257,7 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
     dev->cdev.ops = &aesd_fops;
     err = cdev_add (&dev->cdev, devno, 1);
     if (err) {
-        printk(KERN_ERR "%d - unable to add device", err);
+        printk(KERN_ERR "Error %d adding aesd cdev", err);
     }
     return err;
 }
@@ -321,8 +287,8 @@ int aesd_init_module(void)
         unregister_chrdev_region(dev, 1);
     }
     return result;
-
 }
+
 
 void aesd_cleanup_module(void)
 {
@@ -344,8 +310,6 @@ void aesd_cleanup_module(void)
 
     unregister_chrdev_region(devno, 1);
 }
-
-
 
 module_init(aesd_init_module);
 module_exit(aesd_cleanup_module);
