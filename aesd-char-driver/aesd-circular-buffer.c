@@ -13,23 +13,8 @@
 #else
 #include <string.h>
 #endif
-
+///#include <stdio.h>
 #include "aesd-circular-buffer.h"
-
-/**
- * @param buffer the buffer to check if current in_off is at end of entry array
- * @param offs_idx an index in the buffer entry list
- * @return true if entry is the last entry in the entry array, false if not
- */
-static bool end_entry(struct aesd_circular_buffer *buffer, uint8_t offs_idx)
-{
-    int buffer_size = (sizeof(buffer->entry)) / sizeof(struct aesd_buffer_entry);
-    
-    if (offs_idx == (buffer_size - 1)) {
-        return true;
-    }
-    return false;
-}
 
 /**
  * @param buffer the buffer to search for corresponding offset.  Any necessary locking must be performed by caller.
@@ -44,58 +29,28 @@ static bool end_entry(struct aesd_circular_buffer *buffer, uint8_t offs_idx)
 struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct aesd_circular_buffer *buffer,
             size_t char_offset, size_t *entry_offset_byte_rtn )
 {
-    size_t current_char_offset = 0;
-    size_t entry_offset = 0;
-    size_t entry_index = 0;
-    struct aesd_buffer_entry* p_entry = NULL;
+    /**
+    * TODO: implement per description
+    */
+    // Assuming each entry has a size, adjust this based on your actual data structure
+    size_t total_chars = 0;
+    size_t current_offset = buffer->out_offs;
 
-    if (buffer == NULL) {
-        return NULL;
-    }
+    do {
+        struct aesd_buffer_entry *current_entry = &buffer->entry[current_offset];
 
-    entry_index = buffer->out_offs;
-    p_entry = &(buffer->entry[entry_index]);
-
-    if (p_entry == NULL) {
-        return NULL;
-    }
-
-    while (current_char_offset < char_offset) {
-       
-        if (p_entry->size == 0 || (p_entry->buffptr == NULL)) {
-            return NULL;
-        } else if (entry_offset == (p_entry->size - 1)) {
-            if (end_entry(buffer, entry_index)) {
-                entry_index = 0;
-            } else {
-                entry_index++;
-            }
-
-            p_entry = &(buffer->entry[entry_index]);
-
-            if (p_entry == NULL) {
-                return NULL;
-            }
-
-            if (entry_index == buffer->out_offs) {
-                return NULL;
-            }
-            
-            entry_offset = 0;
-        } else {
-            entry_offset++;
+        if (total_chars + current_entry->size > char_offset) {
+            // Found the entry that contains the char_offset
+            *entry_offset_byte_rtn = char_offset - total_chars;
+            return current_entry;
         }
 
-        current_char_offset++;
-    }
+        total_chars += current_entry->size;
+        current_offset = (current_offset + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
 
-    if (current_char_offset == char_offset) {
-        if ((p_entry->size != 0) && (p_entry->buffptr != NULL)) {
-            *entry_offset_byte_rtn = entry_offset;
-            return p_entry;
-        }
-    }
+    } while (current_offset != buffer->in_offs);
 
+    // Char offset not found in the buffer
     return NULL;
 }
 
@@ -106,27 +61,42 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 * Any necessary locking must be handled by the caller
 * Any memory referenced in @param add_entry must be allocated by and/or must have a lifetime managed by the caller.
 */
-void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
+const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
 {
-    buffer->entry[buffer->in_offs] = *add_entry;
-
-    if (end_entry(buffer, buffer->in_offs)) {
-        buffer->in_offs = 0;
-    } else {
-        buffer->in_offs++;
+    /**
+    * TODO: implement per description
+    */
+    const char* value = NULL;
+    if (AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED == 0) {
+        // Buffer is not initialized
+        return "Buffer not initialized";
     }
-
-    if (buffer->full) {
-        buffer->out_offs = buffer->in_offs;
-    } else {
-        if (buffer->in_offs == buffer->out_offs) {
-            buffer->full = true;
-        } else {
-            buffer->full = false;
+    
+    /*Check for buffer full condition*/
+    if(buffer->full)
+    {
+        value = buffer->entry[buffer->out_offs].buffptr;
+        buffer->out_offs = buffer->out_offs + 1;
+        if(buffer->out_offs == AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+        {
+            buffer->out_offs = 0;
         }
     }
+    
+    buffer->entry[buffer->in_offs] = *add_entry;
+    buffer->in_offs = buffer->in_offs + 1;
+   
+    if(buffer->in_offs == AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+    {
+        buffer->in_offs = 0;
+    }
+    if(buffer->in_offs == buffer->out_offs)
+    {
+        buffer->full = true;
+    }
+    
+    return value;
 
-    return;
 }
 
 /**
