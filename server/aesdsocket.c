@@ -85,19 +85,15 @@ void handle_connection(int client_socket) {
         printf("Received data: %.*s\n", (int)bytes_received, buffer);
 
 #if USE_AESD_CHAR_DEVICE == 1
-        if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
-            unsigned int x, y;
-            if (sscanf(buffer + 19, "%u,%u", &x, &y) == 2) {
-                struct aesd_seekto seek_params = { .write_cmd = x, .write_cmd_offset = y };
-                if (ioctl(aesd_char_fd, AESDCHAR_IOCSEEKTO, &seek_params) == -1) {
-                    syslog(LOG_ERR, "Failed to perform AESDCHAR_IOCSEEKTO ioctl: %s", strerror(errno));
-                    break;
-                }
-            } else {
-                syslog(LOG_ERR, "Invalid AESDCHAR_IOCSEEKTO command format");
-                break;
-            }
-        } else {
+        if (strncmp(outputBuffer, ioctl_string, strlen(ioctl_string)) == 0)
+        {
+        //IOCTL call with params
+        struct aesd_seekto seek_params;
+        sscanf(outputBuffer, "AESDCHAR_IOCSEEKTO:%d,%d", &seek_params.write_cmd, &seek_params.write_cmd_offset);
+        
+        ioctl(aesd_char_fd, AESDCHAR_IOCSEEKTO, &seek_params);
+        }
+        else {
             pthread_mutex_lock(&data_mutex);
             if (write(data_fd, buffer, bytes_received) == -1) {
                 syslog(LOG_ERR, "Failed to write data to %s: %s", DATA_FILE, strerror(errno));
