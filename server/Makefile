@@ -21,7 +21,7 @@ aesdsocket: aesdsocket.o
 
 
 aesdsocket.o: aesdsocket.c
-	$(CC) $(CFLAGS) -c aesdsocket.c -o aesdsocket.o
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c aesdsocket.c -o aesdsocket.o
 	#$(CC) $(LDFLAGS) aesdsocket.o -o aesdsocket
 
 clean:
