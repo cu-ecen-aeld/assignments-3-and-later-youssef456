@@ -81,6 +81,9 @@ void handle_connection(int client_socket) {
     }
     
     while ((bytes_received = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+        // Add a debugging statement to print the received data
+        printf("Received data: %.*s\n", (int)bytes_received, buffer);
+
 #ifdef USE_AESD_CHAR_DEVICE
         if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
             unsigned int x, y;
