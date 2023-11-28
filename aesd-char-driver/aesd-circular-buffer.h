@@ -18,7 +18,6 @@
 
 #define AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED 10
 
-
 struct aesd_buffer_entry
 {
     /**
@@ -29,8 +28,6 @@ struct aesd_buffer_entry
      * Number of bytes stored in buffptr
      */
     size_t size;
-    
-    size_t offset;        // Offset from the beginning of the circular buffer
 };
 
 struct aesd_circular_buffer
@@ -52,18 +49,12 @@ struct aesd_circular_buffer
      * set to true when the buffer entry structure is full
      */
     bool full;
-    
-    size_t size; //to store the total size of the circular buffer
-    
 };
 
 extern struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct aesd_circular_buffer *buffer,
             size_t char_offset, size_t *entry_offset_byte_rtn );
 
-//extern void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry);
-// aesd-circular-buffer.h
-
-extern const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry);
+extern void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry);
 
 extern void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer);
 
