@@ -15,14 +15,14 @@
 #include <pthread.h>
 #include "aesd_ioctl.h"  // Include the newly created header
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
 #include <sys/ioctl.h>
 #endif
 
 #define PORT 9000
 #define MAX_PACKET_SIZE 4096
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
 #define DATA_FILE "/dev/aesdchar"
 #else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
@@ -33,7 +33,7 @@
 
 int listen_socket = -1, data_fd = -1;
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
 int aesd_char_fd = -1;
 #endif
 
@@ -51,7 +51,7 @@ void signal_handler(int signo) {
         if (data_fd != -1)
             close(data_fd);
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
         if (aesd_char_fd != -1)
             close(aesd_char_fd);
 #endif
@@ -84,7 +84,7 @@ void handle_connection(int client_socket) {
         // Add a debugging statement to print the received data
         printf("Received data: %.*s\n", (int)bytes_received, buffer);
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
         if (strncmp(buffer, "AESDCHAR_IOCSEEKTO:", 19) == 0) {
             unsigned int x, y;
             if (sscanf(buffer + 19, "%u,%u", &x, &y) == 2) {
@@ -163,7 +163,7 @@ void write_pid_file() {
     char pid_str[16];
     snprintf(pid_str, sizeof(pid_str), "%d\n", getpid());
 
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
     pthread_mutex_lock(&data_mutex);
     if (write(aesd_char_fd, pid_str, strlen(pid_str)) == -1) {
         syslog(LOG_ERR, "Failed to write to /dev/aesdchar: %s", strerror(errno));
@@ -192,7 +192,7 @@ void* connection_handler(void* client_socket_ptr) {
 void* timestamp_updater(void* arg) {
     while (1) {
         sleep(TIMESTAMP_INTERVAL);
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
         // Timestamp printing is removed
 #else
         pthread_mutex_lock(&timestamp_mutex);
@@ -294,11 +294,11 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-#ifdef USE_AESD_CHAR_DEVICE
-    ///if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
-    ///    syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
-    ///    exit(EXIT_FAILURE);
-    ///}
+#if USE_AESD_CHAR_DEVICE == 1
+    if ((aesd_char_fd = open("/dev/aesdchar", O_RDWR)) == -1) {
+        syslog(LOG_ERR, "Failed to open /dev/aesdchar: %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 #endif
 
     data_fd = open(DATA_FILE, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
 
         pthread_detach(thread);
     }
-#ifdef USE_AESD_CHAR_DEVICE
+#if USE_AESD_CHAR_DEVICE == 1
     if (aesd_char_fd != -1)
         close(aesd_char_fd);
 #endif
